@@ -411,6 +411,43 @@ footer a:hover { color: var(--orange); opacity: 1; text-decoration: none; }
 .mb-4 { margin-bottom: 16px; } .mb-6 { margin-bottom: 24px; } .mb-8 { margin-bottom: 32px; }
 .text-muted { color: var(--muted); } .text-orange { color: var(--orange); }
 
+/* ── Forms ───────────────────────────────────────────── */
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.form-group label .req { color: var(--orange); }
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-input::placeholder,
+.form-textarea::placeholder { color: var(--muted); }
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus { border-color: var(--orange); }
+
+.form-select {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238888A0' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.form-textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
+.char-count { font-size: 12px; color: var(--muted); text-align: right; margin-top: 4px; }
+
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 768px) {
   .nav-links { display: none; }

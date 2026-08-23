@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Request a Feature — Insomniacs Bot</title>
+  <meta name="description" content="Submit a feature request or bug report for Insomniacs Bot." />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="nav-brand" href="index.html">Insomniacs<span class="dot">.</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="commands.html">Commands</a>
+      <a href="feature-request.html" class="active">Requests</a>
+    </div>
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="wrap">
+    <span class="eyebrow">// feedback</span>
+    <h1>Request a Feature</h1>
+    <p>Got an idea or spotted a bug? Submit it below and it'll open a GitHub issue automatically.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="wrap-narrow">
+
+    <div id="form-container">
+      <form id="request-form" novalidate>
+
+        <div class="form-group">
+          <label for="category">Category</label>
+          <select id="category" class="form-select">
+            <option value="Feature Request">Feature Request</option>
+            <option value="Bug Report">Bug Report</option>
+            <option value="General Suggestion">General Suggestion</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="title">Title <span class="req">*</span></label>
+          <input type="text" id="title" class="form-input" placeholder="Short summary of your request" maxlength="200" required />
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description <span class="req">*</span></label>
+          <textarea id="description" class="form-textarea" rows="6" placeholder="Describe the feature or bug in detail…" maxlength="5000" required></textarea>
+          <div class="char-count"><span id="char-count">0</span> / 5000</div>
+        </div>
+
+        <div id="form-error" class="callout hidden" style="border-left-color:#ef4444; margin-bottom:16px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div><strong id="form-error-text" style="color:var(--text);">Something went wrong</strong></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submit-btn">Submit Request</button>
+
+      </form>
+    </div>
+
+    <div id="success-container" class="hidden">
+      <div class="callout success">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <div>
+          <strong>Request submitted!</strong>
+          <p>Your request has been opened as a GitHub issue. <a id="issue-link" href="#" target="_blank" rel="noopener">View it on GitHub →</a></p>
+        </div>
+      </div>
+      <button class="btn btn-ghost mt-6" onclick="resetForm()">Submit another</button>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="footer-links">
+    <a href="index.html">Home</a>
+    <a href="commands.html">Commands</a>
+    <a href="feature-request.html">Requests</a>
+    <a href="https://github.com/Easton99/Insomniacs-bot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+  </div>
+  <p>Built for the Insomniacs Discord server.</p>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+  // Replace this with your Cloudflare Worker URL after deploying
+  const WORKER_URL = 'YOUR_WORKER_URL_HERE';
+
+  const form        = document.getElementById('request-form');
+  const submitBtn   = document.getElementById('submit-btn');
+  const formError   = document.getElementById('form-error');
+  const errorText   = document.getElementById('form-error-text');
+  const formContainer     = document.getElementById('form-container');
+  const successContainer  = document.getElementById('success-container');
+  const issueLink   = document.getElementById('issue-link');
+  const descEl      = document.getElementById('description');
+  const charCountEl = document.getElementById('char-count');
+
+  descEl.addEventListener('input', () => { charCountEl.textContent = descEl.value.length; });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formError.classList.add('hidden');
+
+    const title       = document.getElementById('title').value.trim();
+    const description = descEl.value.trim();
+    const category    = document.getElementById('category').value;
+
+    if (!title)       { showError('Please enter a title.'); return; }
+    if (!description) { showError('Please enter a description.'); return; }
+
+    submitBtn.disabled    = true;
+    submitBtn.textContent = 'Submitting…';
+
+    try {
+      const res  = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description, category }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(data.error ?? 'Something went wrong. Try again.'); return; }
+      issueLink.href = data.url;
+      formContainer.classList.add('hidden');
+      successContainer.classList.remove('hidden');
+    } catch {
+      showError('Could not reach the server. Check your connection and try again.');
+    } finally {
+      submitBtn.disabled    = false;
+      submitBtn.textContent = 'Submit Request';
+    }
+  });
+
+  function showError(msg) {
+    errorText.textContent = msg;
+    formError.classList.remove('hidden');
+    formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function resetForm() {
+    form.reset();
+    charCountEl.textContent = '0';
+    formContainer.classList.remove('hidden');
+    successContainer.classList.add('hidden');
+  }
+</script>
+</body>
+</html>
