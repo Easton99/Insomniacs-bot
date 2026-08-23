@@ -25,6 +25,10 @@ async function main(): Promise<void> {
   });
 
   client.on(Events.InteractionCreate, (interaction) => {
+    logger.debug(
+      { type: interaction.type, commandName: 'commandName' in interaction ? interaction.commandName : undefined },
+      'Interaction received',
+    );
     handleInteraction(interaction, commands).catch((error: unknown) => {
       logger.error({ error }, 'Unhandled error in interaction handler');
     });
