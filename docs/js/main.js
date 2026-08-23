@@ -87,14 +87,13 @@ const style = document.createElement('style');
 style.textContent = `
   .copy-btn {
     position: absolute; top: 8px; right: 8px;
-    background: var(--bg-card); border: 1px solid var(--border-strong);
+    background: var(--surface2); border: 1px solid var(--border);
     border-radius: 6px; padding: 5px 7px;
-    color: var(--text-muted); cursor: pointer;
+    color: var(--muted); cursor: pointer;
     display: flex; align-items: center;
-    transition: color 0.15s, background 0.15s;
-    opacity: 0; transition: opacity 0.15s;
+    opacity: 0; transition: opacity 0.15s, color 0.15s, background 0.15s;
   }
   pre:hover .copy-btn { opacity: 1; }
-  .copy-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+  .copy-btn:hover { color: var(--text); background: var(--surface); }
 `;
 document.head.appendChild(style);
