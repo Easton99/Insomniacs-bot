@@ -9,7 +9,7 @@ export function loadCommands(): Collection<string, BotCommand> {
   const commandsDir = join(__dirname, '..', 'commands');
 
   const files = readdirSync(commandsDir).filter(
-    (f) => f.endsWith('.js') || f.endsWith('.ts'),
+    (f) => (f.endsWith('.js') || f.endsWith('.ts')) && !f.endsWith('.d.ts'),
   );
 
   for (const file of files) {

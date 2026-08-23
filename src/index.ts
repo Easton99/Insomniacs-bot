@@ -12,7 +12,11 @@ const client = new Client({
 async function main(): Promise<void> {
   logger.info('Starting Insomniacs Bot…');
 
-  await connectDatabase();
+  try {
+    await connectDatabase();
+  } catch (dbError: unknown) {
+    logger.warn({ dbError }, 'Database unavailable — bot will start without DB (commands requiring storage will fail)');
+  }
 
   const commands = loadCommands();
 
