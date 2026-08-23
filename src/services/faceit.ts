@@ -69,16 +69,19 @@ export interface FaceitPlayerStats {
   lifetime: Record<string, string | string[]>;
 }
 
+export interface FaceitMatchHistoryTeam {
+  faction_id: string;
+  players: Array<{ player_id: string; nickname: string }>;
+}
+
 export interface FaceitMatchHistoryItem {
   match_id: string;
   game_id: string;
   status: string;
   started_at: number;
   finished_at: number;
-  teams: Array<{
-    faction_id: string;
-    players: Array<{ player_id: string; nickname: string }>;
-  }>;
+  /** Keyed by faction name, e.g. { faction1: {...}, faction2: {...} } */
+  teams: Record<string, FaceitMatchHistoryTeam>;
   results?: {
     winner: string;
     score: Record<string, number>;

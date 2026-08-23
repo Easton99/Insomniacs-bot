@@ -78,7 +78,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   let lateNightCount = 0;
 
   for (const item of historyItems) {
-    const playerTeam = item.teams?.find((t) => t.players?.some((p) => p.player_id === linked.faceitId));
+    const teams = Object.values(item.teams ?? {});
+    const playerTeam = teams.find((t) => t.players?.some((p) => p.player_id === linked.faceitId));
     const won = item.results?.winner != null && item.results.winner === playerTeam?.faction_id;
 
     if (won) {

@@ -60,13 +60,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const teammates = new Map<string, TeammateStats>();
 
   for (const item of history.items) {
-    // Find player's faction
-    const playerTeam = item.teams.find((t) => t.players.some((p) => p.player_id === linked.faceitId));
+    const teams = Object.values(item.teams ?? {});
+    const playerTeam = teams.find((t) => t.players?.some((p) => p.player_id === linked.faceitId));
     if (!playerTeam) continue;
 
     const won = item.results?.winner === playerTeam.faction_id;
 
-    for (const p of playerTeam.players) {
+    for (const p of playerTeam.players ?? []) {
       if (!linkedMap.has(p.player_id)) continue;
       const entry = teammates.get(p.player_id) ?? {
         faceitId: p.player_id,
