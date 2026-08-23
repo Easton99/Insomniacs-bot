@@ -24,8 +24,8 @@ export async function handleInteraction(
 
     try {
       await command.execute(interaction);
-    } catch (error) {
-      logger.error({ error, command: subcommandName }, 'Command execution failed');
+    } catch (err) {
+      logger.error({ err, command: subcommandName }, 'Command execution failed');
       await replyWithError(interaction);
     }
   } else if (interaction.isStringSelectMenu() && interaction.customId === LEADERBOARD_SELECT_ID) {

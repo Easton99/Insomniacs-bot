@@ -1,7 +1,13 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import { db } from '../database/client';
-import { FaceitApiError, getPlayerById, getPlayerHistory, getPlayerLifetimeStats } from '../services/faceit';
-import { fetchMatchesWithStats } from '../utils/match-utils';
+import {
+  FaceitApiError,
+  getMatchStats,
+  getPlayerById,
+  getPlayerHistory,
+  getPlayerLifetimeStats,
+} from '../services/faceit';
+import { processMatchStats } from '../utils/match-utils';
 import { config } from '../config';
 import logger from '../utils/logger';
 
@@ -13,12 +19,20 @@ export const subcommand = new SlashCommandSubcommandBuilder()
   );
 
 function isLateNight(startedAt: number, timezone: string): boolean {
-  const date = new Date(startedAt * 1000);
-  const hour = parseInt(
-    new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false }).format(date),
-    10,
-  );
-  return hour >= 23 || hour <= 4;
+  try {
+    const date = new Date(startedAt * 1000);
+    if (isNaN(date.getTime())) return false;
+    const hourStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false,
+    }).format(date);
+    const hour = parseInt(hourStr, 10);
+    if (isNaN(hour)) return false;
+    return hour >= 23 || hour <= 4;
+  } catch {
+    return false;
+  }
 }
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -37,16 +51,16 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  let player, lifetimeStats, history, matchStats;
+  // Phase 1: lightweight calls
+  let player, lifetimeStats, history;
   try {
-    [player, lifetimeStats, history, matchStats] = await Promise.all([
+    [player, lifetimeStats, history] = await Promise.all([
       getPlayerById(linked.faceitId),
       getPlayerLifetimeStats(linked.faceitId),
       getPlayerHistory(linked.faceitId, 100),
-      fetchMatchesWithStats(linked.faceitId, 50),
     ]);
   } catch (err) {
-    if (err instanceof FaceitApiError) logger.error({ err }, 'FACEIT API error during /ic achievements');
+    if (err instanceof FaceitApiError) logger.error({ err }, 'FACEIT API error during /ic achievements (phase 1)');
     await interaction.editReply({ content: 'Could not reach the FACEIT API right now. Try again in a moment.' });
     return;
   }
@@ -56,61 +70,76 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const currentStreak = parseInt((lt['Current Win Streak'] as string) ?? '0', 10);
   const longestStreak = parseInt((lt['Longest Win Streak'] as string) ?? '0', 10);
 
-  // Loss streak from history
+  const historyItems = history.items ?? [];
+
+  // Loss streak + late-night from history items (no extra API calls needed)
   let lossStreak = 0;
   let maxLossStreak = 0;
-  for (const item of history.items) {
-    const playerTeam = item.teams.find((t) => t.players.some((p) => p.player_id === linked.faceitId));
-    const won = item.results?.winner === playerTeam?.faction_id;
-    if (!won) {
-      lossStreak++;
-      maxLossStreak = Math.max(maxLossStreak, lossStreak);
-    } else {
+  let lateNightCount = 0;
+
+  for (const item of historyItems) {
+    const playerTeam = item.teams?.find((t) => t.players?.some((p) => p.player_id === linked.faceitId));
+    const won = item.results?.winner != null && item.results.winner === playerTeam?.faction_id;
+
+    if (won) {
       lossStreak = 0;
+    } else {
+      lossStreak++;
+      if (lossStreak > maxLossStreak) maxLossStreak = lossStreak;
+    }
+
+    if (item.started_at && isLateNight(item.started_at, config.BOT_TIMEZONE)) {
+      lateNightCount++;
     }
   }
 
-  // Late-night count
-  const lateNightMatches = history.items.filter((m) => isLateNight(m.started_at, config.BOT_TIMEZONE));
-
-  // Kill-based achievements from match stats
+  // Phase 2: match stats for kill-based achievements (first 50 history items)
   let bestKills = 0;
   let bestKillsMap = '?';
-  let bestKillsLoss = 0;
-  let bestKillsLossMap = '?';
+  let bestKillsInLoss = 0;
+  let bestKillsInLossMap = '?';
   let hasPenta = false;
 
-  for (const m of matchStats) {
-    if (m.kills > bestKills) {
-      bestKills = m.kills;
-      bestKillsMap = m.map;
+  const statsItems = historyItems.slice(0, 50);
+  if (statsItems.length > 0) {
+    const statsResults = await Promise.allSettled(statsItems.map((m) => getMatchStats(m.match_id)));
+
+    for (let i = 0; i < statsItems.length; i++) {
+      const r = statsResults[i];
+      if (r.status === 'rejected') continue;
+
+      const m = processMatchStats(r.value, linked.faceitId, statsItems[i].started_at ?? 0);
+      if (!m) continue;
+
+      if (m.kills > bestKills) {
+        bestKills = m.kills;
+        bestKillsMap = m.map;
+      }
+      if (m.result === 'L' && m.kills > bestKillsInLoss) {
+        bestKillsInLoss = m.kills;
+        bestKillsInLossMap = m.map;
+      }
+      if (m.pentaKills > 0) hasPenta = true;
     }
-    if (m.result === 'L' && m.kills > bestKillsLoss) {
-      bestKillsLoss = m.kills;
-      bestKillsLossMap = m.map;
-    }
-    if (m.pentaKills > 0) hasPenta = true;
   }
 
+  // Evaluate achievements
   const earned: Array<{ icon: string; name: string; detail: string }> = [];
 
-  // Milestone achievements
-  if (totalMatches >= 100) earned.push({ icon: '🎮', name: 'Century Club', detail: `${totalMatches} matches played` });
   if (totalMatches >= 500) earned.push({ icon: '⚔️', name: 'Veteran', detail: `${totalMatches} matches played` });
+  else if (totalMatches >= 100) earned.push({ icon: '🎮', name: 'Century Club', detail: `${totalMatches} matches played` });
 
-  // Streak achievements
   if (longestStreak >= 10) earned.push({ icon: '🚀', name: 'Unstoppable', detail: `${longestStreak}-game best win streak` });
   if (currentStreak >= 3) earned.push({ icon: '🔥', name: 'On Fire', detail: `Currently on a ${currentStreak}-game win streak` });
-  if (maxLossStreak >= 5) earned.push({ icon: '😤', name: 'Tilt Queue', detail: `${maxLossStreak}-game loss streak (ouch)` });
+  if (maxLossStreak >= 5) earned.push({ icon: '😤', name: 'Tilt Queue', detail: `${maxLossStreak}-game loss streak` });
 
-  // Late night achievements
-  if (lateNightMatches.length >= 1) earned.push({ icon: '🌙', name: 'Go To Bed', detail: `${lateNightMatches.length} late-night match${lateNightMatches.length !== 1 ? 'es' : ''} (11 PM – 5 AM)` });
-  if (lateNightMatches.length >= 10) earned.push({ icon: '🦉', name: 'The Insomniac', detail: `${lateNightMatches.length} late-night matches` });
+  if (lateNightCount >= 10) earned.push({ icon: '🦉', name: 'The Insomniac', detail: `${lateNightCount} late-night matches (11 PM – 5 AM)` });
+  else if (lateNightCount >= 1) earned.push({ icon: '🌙', name: 'Go To Bed', detail: `${lateNightCount} late-night match${lateNightCount !== 1 ? 'es' : ''} (11 PM – 5 AM)` });
 
-  // Kill achievements
-  if (bestKills >= 30) earned.push({ icon: '💣', name: 'Thirty Bomb', detail: `${bestKills}K on ${bestKillsMap}` });
   if (bestKills >= 35) earned.push({ icon: '🤯', name: 'Thirty-Five?!', detail: `${bestKills}K on ${bestKillsMap}` });
-  if (bestKillsLoss >= 30) earned.push({ icon: '🏋️', name: 'The Hard Carry', detail: `${bestKillsLoss}K in a losing match on ${bestKillsLossMap}` });
+  else if (bestKills >= 30) earned.push({ icon: '💣', name: 'Thirty Bomb', detail: `${bestKills}K on ${bestKillsMap}` });
+
+  if (bestKillsInLoss >= 30) earned.push({ icon: '🏋️', name: 'The Hard Carry', detail: `${bestKillsInLoss}K in a losing match on ${bestKillsInLossMap}` });
   if (hasPenta) earned.push({ icon: '⭐', name: 'Ace', detail: 'Got a penta kill' });
 
   const embed = new EmbedBuilder()
@@ -120,19 +149,16 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       url: `https://www.faceit.com/en/players/${encodeURIComponent(player.nickname)}`,
       iconURL: player.avatar || undefined,
     })
-    .setTitle(`Achievements — ${earned.length} earned`);
-
-  if (earned.length) {
-    embed.setDescription(
-      earned.map((a) => `${a.icon}  **${a.name}**\n${a.detail}`).join('\n\n'),
-    );
-  } else {
-    embed.setDescription('No achievements unlocked yet. Keep playing!');
-  }
-
-  embed
-    .setFooter({ text: 'Kill achievements based on last 50 matches · Streak and late-night from last 100' })
+    .setTitle(`Achievements — ${earned.length} earned`)
+    .setDescription(
+      earned.length
+        ? earned.map((a) => `${a.icon}  **${a.name}**\n${a.detail}`).join('\n\n')
+        : 'No achievements unlocked yet. Keep playing!',
+    )
+    .setFooter({ text: `Kill achievements: last ${statsItems.length} matches  ·  Streak/late-night: last ${historyItems.length}` })
     .setTimestamp();
+
+  if (player.avatar) embed.setThumbnail(player.avatar);
 
   await interaction.editReply({ embeds: [embed] });
 }
