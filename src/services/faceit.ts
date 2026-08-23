@@ -63,10 +63,70 @@ async function faceitFetch<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface FaceitPlayerStats {
+  player_id: string;
+  game_id: string;
+  lifetime: Record<string, string | string[]>;
+}
+
+export interface FaceitMatchHistoryItem {
+  match_id: string;
+  game_id: string;
+  status: string;
+  started_at: number;
+  finished_at: number;
+  teams: Array<{
+    faction_id: string;
+    players: Array<{ player_id: string; nickname: string }>;
+  }>;
+}
+
+export interface FaceitMatchHistory {
+  items: FaceitMatchHistoryItem[];
+  start: number;
+  end: number;
+}
+
+export interface FaceitMatchPlayerStats {
+  player_id: string;
+  nickname: string;
+  player_stats: Record<string, string>;
+}
+
+export interface FaceitMatchStatsRound {
+  match_id: string;
+  game_id: string;
+  round_stats: Record<string, string>;
+  teams: Array<{
+    team_id: string;
+    premade: boolean;
+    team_stats: Record<string, string>;
+    players: FaceitMatchPlayerStats[];
+  }>;
+}
+
+export interface FaceitMatchStats {
+  rounds: FaceitMatchStatsRound[];
+}
+
 export async function getPlayerByNickname(nickname: string): Promise<FaceitPlayer> {
   return faceitFetch<FaceitPlayer>(`/players?nickname=${encodeURIComponent(nickname)}&game=cs2`);
 }
 
 export async function getPlayerById(playerId: string): Promise<FaceitPlayer> {
   return faceitFetch<FaceitPlayer>(`/players/${playerId}`);
+}
+
+export async function getPlayerLifetimeStats(playerId: string): Promise<FaceitPlayerStats> {
+  return faceitFetch<FaceitPlayerStats>(`/players/${playerId}/stats/cs2`);
+}
+
+export async function getPlayerHistory(playerId: string, limit = 10, offset = 0): Promise<FaceitMatchHistory> {
+  return faceitFetch<FaceitMatchHistory>(
+    `/players/${playerId}/history?game=cs2&limit=${limit}&offset=${offset}`,
+  );
+}
+
+export async function getMatchStats(matchId: string): Promise<FaceitMatchStats> {
+  return faceitFetch<FaceitMatchStats>(`/matches/${matchId}/stats`);
 }
