@@ -10,6 +10,7 @@
 </head>
 <body>
 
+<!-- ── Navigation ──────────────────────────────────────── -->
 <nav class="nav">
   <div class="wrap nav-inner">
     <a class="nav-brand" href="index.html">Insomniacs<span class="dot">.</span></a>
@@ -28,6 +29,7 @@
   </div>
 </nav>
 
+<!-- ── Page header ─────────────────────────────────────── -->
 <div class="page-header">
   <div class="wrap">
     <span class="eyebrow">// getting started</span>
@@ -36,9 +38,11 @@
   </div>
 </div>
 
+<!-- ── Main content ────────────────────────────────────── -->
 <section class="section">
   <div class="wrap-narrow">
 
+    <!-- Prerequisites -->
     <h2 class="mb-6" style="font-size:1.4rem;">Prerequisites</h2>
 
     <div class="table-wrap mb-8">
@@ -69,7 +73,7 @@
           <tr>
             <td>Discord application</td>
             <td>—</td>
-            <td>See step 1 below</td>
+            <td>See Part 1 below</td>
           </tr>
           <tr>
             <td>FACEIT API key</td>
@@ -80,6 +84,7 @@
       </table>
     </div>
 
+    <!-- Part 1 — Discord app -->
     <h2 class="mb-6" style="font-size:1.4rem;">Part 1 — Discord Application</h2>
 
     <div class="steps mb-8">
@@ -112,7 +117,7 @@
         <div class="step-num">4</div>
         <div class="step-body">
           <h3>Invite the bot to your server</h3>
-          <p>Use the URL below (replace <code>YOUR_CLIENT_ID</code>). Select the server and authorise. This grants the <code>bot</code> and <code>applications.commands</code> scopes.</p>
+          <p>Build an OAuth2 URL (replace <code>YOUR_CLIENT_ID</code>). Select your server and authorise — this grants the <code>bot</code> and <code>applications.commands</code> scopes.</p>
           <pre>https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=277025770496&scope=bot+applications.commands</pre>
         </div>
       </div>
@@ -127,6 +132,7 @@
 
     </div>
 
+    <!-- Part 2 — FACEIT -->
     <h2 class="mb-6" style="font-size:1.4rem;">Part 2 — FACEIT API Key</h2>
 
     <div class="steps mb-8">
@@ -144,7 +150,7 @@
         <div class="step-body">
           <h3>Create an application and generate an API key</h3>
           <p>Create a new application. Under <strong>API Keys</strong>, generate a <strong>Server-Side</strong> key. Copy it as <code>FACEIT_API_KEY</code>.</p>
-          <div class="callout warning mt-4">
+          <div class="callout warning">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
               <line x1="12" y1="9" x2="12" y2="13"/>
@@ -160,6 +166,7 @@
 
     </div>
 
+    <!-- Part 3 — Local setup -->
     <h2 class="mb-6" style="font-size:1.4rem;">Part 3 — Local Development</h2>
 
     <div class="steps mb-8">
@@ -196,7 +203,7 @@ cd Insomniacs-bot</pre>
           <h3>Start PostgreSQL</h3>
           <p>Using Docker (recommended):</p>
           <pre>docker compose up -d postgres</pre>
-          <p>Or start your own PostgreSQL 16 instance and update <code>DATABASE_URL</code> in <code>.env</code>.</p>
+          <p>Or start your own PostgreSQL 16+ instance and update <code>DATABASE_URL</code> in <code>.env</code>.</p>
         </div>
       </div>
 
@@ -213,7 +220,7 @@ npm run prisma:migrate</pre>
         <div class="step-num">6</div>
         <div class="step-body">
           <h3>Register Discord slash commands</h3>
-          <p>This pushes the command definitions to your guild — they'll appear in Discord immediately.</p>
+          <p>Pushes the command definitions to your guild — they appear in Discord immediately.</p>
           <pre>npm run commands:register</pre>
         </div>
       </div>
@@ -223,12 +230,13 @@ npm run prisma:migrate</pre>
         <div class="step-body">
           <h3>Start the bot</h3>
           <pre>npm run dev</pre>
-          <p>The bot uses <code>tsx --watch</code> in development mode — it restarts automatically when you change a source file.</p>
+          <p>Uses <code>tsx --watch</code> — the bot restarts automatically when you save a source file.</p>
         </div>
       </div>
 
     </div>
 
+    <!-- Part 4 — Docker -->
     <h2 class="mb-6" style="font-size:1.4rem;">Part 4 — Docker (Production)</h2>
 
     <div class="steps mb-8">
@@ -237,7 +245,7 @@ npm run prisma:migrate</pre>
         <div class="step-num">1</div>
         <div class="step-body">
           <h3>Fill in <code>.env</code></h3>
-          <p>Make sure <code>.env</code> is configured. The Docker Compose file overrides <code>DATABASE_URL</code> to point at the internal <code>postgres</code> container automatically.</p>
+          <p>Make sure <code>.env</code> is fully configured. The Docker Compose file overrides <code>DATABASE_URL</code> to point at the internal <code>postgres</code> container automatically.</p>
         </div>
       </div>
 
@@ -246,15 +254,14 @@ npm run prisma:migrate</pre>
         <div class="step-body">
           <h3>Start everything</h3>
           <pre>docker compose up -d</pre>
-          <p>This builds the bot image, starts PostgreSQL, and waits for the database to be healthy before launching the bot.</p>
+          <p>Builds the bot image, starts PostgreSQL, and waits for the database to be healthy before launching.</p>
         </div>
       </div>
 
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
-          <h3>Run migrations inside the container</h3>
-          <p>First-time setup only:</p>
+          <h3>Run migrations (first time only)</h3>
           <pre>docker compose exec bot npm run prisma:migrate</pre>
         </div>
       </div>
@@ -269,6 +276,7 @@ npm run prisma:migrate</pre>
 
     </div>
 
+    <!-- Env vars -->
     <h2 class="mb-6" style="font-size:1.4rem;">Environment Variables</h2>
 
     <div class="table-wrap mb-8">
@@ -340,6 +348,7 @@ npm run prisma:migrate</pre>
       </table>
     </div>
 
+    <!-- npm scripts -->
     <h2 class="mb-6" style="font-size:1.4rem;">npm Scripts</h2>
 
     <div class="table-wrap mb-8">
@@ -391,13 +400,14 @@ npm run prisma:migrate</pre>
       </table>
     </div>
 
+    <!-- Done callout -->
     <div class="callout success">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="20 6 9 17 4 12"/>
       </svg>
       <div>
         <strong>You're set up</strong>
-        <p>Once the bot is online, try <code>/ping</code> in your server to confirm it's responding. Then link your FACEIT account with <code>/link</code> once Phase 2 is released.</p>
+        <p>Try <code>/ping</code> in your server to confirm the bot is responding. Then link your FACEIT account with <code>/link</code> once Phase 2 is released.</p>
       </div>
     </div>
 
