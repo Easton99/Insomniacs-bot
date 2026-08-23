@@ -18,7 +18,7 @@ async function main(): Promise<void> {
     logger.warn({ dbError }, 'Database unavailable — bot will start without DB (commands requiring storage will fail)');
   }
 
-  const commands = loadCommands();
+  const { commands } = loadCommands();
 
   client.once(Events.ClientReady, (readyClient) => {
     logger.info({ tag: readyClient.user.tag }, 'Bot online');

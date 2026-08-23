@@ -1,13 +1,13 @@
 import {
-  SlashCommandBuilder,
+  SlashCommandSubcommandBuilder,
   ContextMenuCommandBuilder,
   ChatInputCommandInteraction,
   MessageContextMenuCommandInteraction,
   UserContextMenuCommandInteraction,
 } from 'discord.js';
 
-export interface SlashCommand {
-  data: SlashCommandBuilder;
+export interface SubCommand {
+  subcommand: SlashCommandSubcommandBuilder;
   execute(interaction: ChatInputCommandInteraction): Promise<void>;
 }
 
@@ -18,8 +18,8 @@ export interface ContextMenuCommand {
   ): Promise<void>;
 }
 
-export type BotCommand = SlashCommand | ContextMenuCommand;
+export type BotCommand = SubCommand | ContextMenuCommand;
 
-export function isSlashCommand(cmd: BotCommand): cmd is SlashCommand {
-  return cmd.data instanceof SlashCommandBuilder;
+export function isSubCommand(cmd: BotCommand): cmd is SubCommand {
+  return 'subcommand' in cmd;
 }

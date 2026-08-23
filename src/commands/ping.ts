@@ -1,6 +1,6 @@
-import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 
-export const data = new SlashCommandBuilder()
+export const subcommand = new SlashCommandSubcommandBuilder()
   .setName('ping')
   .setDescription('Check bot status and latency');
 
@@ -12,10 +12,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
   const embed = new EmbedBuilder()
     .setTitle('Insomniacs Bot — Status')
-    .setColor(0x5865f2)
+    .setColor(0xff6b35)
     .addFields(
-      { name: 'Round-trip latency', value: `${roundtrip}ms`, inline: true },
-      { name: 'WebSocket latency', value: `${ws >= 0 ? ws + 'ms' : 'N/A'}`, inline: true },
+      { name: 'Round-trip', value: `${roundtrip}ms`, inline: true },
+      { name: 'WebSocket', value: `${ws >= 0 ? ws + 'ms' : 'N/A'}`, inline: true },
     )
     .setTimestamp();
 

@@ -1,11 +1,17 @@
 import { readdirSync } from 'fs';
 import { join } from 'path';
-import { Collection } from 'discord.js';
-import { BotCommand } from '../types';
+import { Collection, SlashCommandBuilder } from 'discord.js';
+import { SubCommand } from '../types';
 import logger from './logger';
 
-export function loadCommands(): Collection<string, BotCommand> {
-  const commands = new Collection<string, BotCommand>();
+const PARENT_NAME = 'ic';
+const PARENT_DESCRIPTION = 'Insomniacs Bot — CS2 & FACEIT statistics';
+
+export function loadCommands(): {
+  commands: Collection<string, SubCommand>;
+  parentCommand: SlashCommandBuilder;
+} {
+  const commands = new Collection<string, SubCommand>();
   const commandsDir = join(__dirname, '..', 'commands');
 
   const files = readdirSync(commandsDir).filter(
@@ -15,17 +21,24 @@ export function loadCommands(): Collection<string, BotCommand> {
   for (const file of files) {
     const filePath = join(commandsDir, file);
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require(filePath) as Partial<BotCommand>;
+    const mod = require(filePath) as Partial<SubCommand>;
 
-    if ('data' in mod && 'execute' in mod && mod.data && mod.execute) {
-      commands.set(mod.data.name, mod as BotCommand);
-      logger.debug(`Loaded command: ${mod.data.name}`);
+    if (mod.subcommand && typeof mod.execute === 'function') {
+      commands.set(mod.subcommand.name, { subcommand: mod.subcommand, execute: mod.execute });
+      logger.debug(`Loaded subcommand: ic ${mod.subcommand.name}`);
     } else {
-      logger.warn({ file }, 'Skipping invalid command file — missing data or execute export');
+      logger.warn({ file }, 'Skipping invalid command file — missing subcommand or execute export');
     }
   }
 
-  logger.info(`Loaded ${commands.size} command(s)`);
-  return commands;
-}
+  const parentCommand = new SlashCommandBuilder()
+    .setName(PARENT_NAME)
+    .setDescription(PARENT_DESCRIPTION);
 
+  for (const cmd of commands.values()) {
+    parentCommand.addSubcommand(cmd.subcommand);
+  }
+
+  logger.info(`Loaded ${commands.size} subcommand(s) under /${PARENT_NAME}`);
+  return { commands, parentCommand };
+}

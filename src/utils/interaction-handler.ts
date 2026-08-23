@@ -1,50 +1,30 @@
 import { Collection, Interaction } from 'discord.js';
-import { BotCommand, isSlashCommand } from '../types';
+import { SubCommand } from '../types';
 import logger from './logger';
 
 export async function handleInteraction(
   interaction: Interaction,
-  commands: Collection<string, BotCommand>,
+  commands: Collection<string, SubCommand>,
 ): Promise<void> {
-  if (interaction.isChatInputCommand()) {
-    const command = commands.get(interaction.commandName);
+  if (interaction.isChatInputCommand() && interaction.commandName === 'ic') {
+    const subcommandName = interaction.options.getSubcommand();
+    const command = commands.get(subcommandName);
 
-    if (!command || !isSlashCommand(command)) {
-      logger.warn({ commandName: interaction.commandName }, 'Received unknown slash command');
+    if (!command) {
+      logger.warn({ subcommand: subcommandName }, 'Received unknown subcommand');
       return;
     }
 
     logger.info(
-      { command: interaction.commandName, user: interaction.user.tag, guild: interaction.guildId },
+      { command: `ic ${subcommandName}`, user: interaction.user.tag, guild: interaction.guildId },
       'Command executed',
     );
 
     try {
       await command.execute(interaction);
     } catch (error) {
-      logger.error({ error, command: interaction.commandName }, 'Command execution failed');
+      logger.error({ error, command: subcommandName }, 'Command execution failed');
       await replyWithError(interaction);
-    }
-    return;
-  }
-
-  if (interaction.isMessageContextMenuCommand() || interaction.isUserContextMenuCommand()) {
-    const command = commands.get(interaction.commandName);
-
-    if (!command || isSlashCommand(command)) {
-      logger.warn({ commandName: interaction.commandName }, 'Received unknown context menu command');
-      return;
-    }
-
-    logger.info(
-      { command: interaction.commandName, user: interaction.user.tag },
-      'Context menu command executed',
-    );
-
-    try {
-      await command.execute(interaction);
-    } catch (error) {
-      logger.error({ error, command: interaction.commandName }, 'Context menu command failed');
     }
   }
 }
