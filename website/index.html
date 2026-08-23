@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Insomniacs Bot</title>
+  <meta name="description" content="A private Discord bot for the Insomniacs server — CS2 and FACEIT statistics, records, leaderboards, achievements, and more." />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
+</head>
+<body>
+
+<!-- ── Navigation ──────────────────────────────────────── -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="index.html">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.111 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+      </svg>
+      Insomniacs Bot
+    </a>
+
+    <div class="nav-links">
+      <a href="index.html" class="active">Home</a>
+      <a href="commands.html">Commands</a>
+      <a href="setup.html">Setup</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot" target="_blank" rel="noopener">GitHub</a>
+    </div>
+
+    <div class="nav-actions">
+      <a class="btn btn-primary btn-sm"
+         href="https://discord.com/oauth2/authorize?client_id=1540898204294582292&permissions=277025770496&scope=bot+applications.commands"
+         target="_blank" rel="noopener">
+        Add to Server
+      </a>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+        <circle cx="5" cy="5" r="5"/>
+      </svg>
+      Private · CS2 / FACEIT
+    </div>
+
+    <h1>Your CS2 stats,<br/>all in one place</h1>
+
+    <p class="hero-sub">
+      Insomniacs Bot tracks FACEIT match history for the Insomniacs server —
+      K/D, ADR, leaderboards, records, achievements, and everything in between.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn btn-primary btn-lg"
+         href="https://discord.com/oauth2/authorize?client_id=1540898204294582292&permissions=277025770496&scope=bot+applications.commands"
+         target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.111 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+        </svg>
+        Add to Server
+      </a>
+      <a class="btn btn-secondary btn-lg" href="commands.html">View Commands</a>
+      <a class="btn btn-outline btn-lg" href="https://github.com/Easton99/Insomniacs-bot" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        GitHub
+      </a>
+    </div>
+
+    <div style="display:flex;justify-content:center">
+      <div class="hero-notice">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span>
+          <strong>Pull-based only.</strong>
+          The bot never posts unsolicited messages — everything shown in Discord is triggered by a user command or interaction.
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Phase banner ────────────────────────────────────── -->
+<div class="phase-banner">
+  <div class="container">
+    <p>
+      <strong>Phase 1 — Foundation</strong> is live.
+      More commands arriving in phases 2–10.
+      <a href="commands.html">See the full roadmap →</a>
+    </p>
+  </div>
+</div>
+
+<!-- ── Features ────────────────────────────────────────── -->
+<section class="section" style="background: var(--bg-secondary);">
+  <div class="container">
+    <div class="section-header">
+      <h2>Everything you need to settle the argument</h2>
+      <p>From live ELO tracking to all-time records — the Insomniacs history book, automated.</p>
+    </div>
+
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </div>
+        <h3>FACEIT Account Linking</h3>
+        <p>Link your Discord account to your FACEIT nickname once. The bot tracks matches automatically from that point on and backfills your history.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6"  y1="20" x2="6"  y2="14"/>
+          </svg>
+        </div>
+        <h3>Rich Player Statistics</h3>
+        <p>K/D, ADR, headshot %, win rate, ELO history, streaks, recent form — over any time period you choose.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="6"/>
+            <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+          </svg>
+        </div>
+        <h3>Server Leaderboards</h3>
+        <p>Who has the highest ELO? Best K/D? Most 30-bombs? The Insomniacs leaderboard covers the serious stats and the fun ones.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8"  y1="2" x2="8"  y2="6"/>
+            <line x1="3"  y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <h3>Match History</h3>
+        <p>Browse recent games with map, score, kills, deaths, ADR, and ELO change for each match.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+        </div>
+        <h3>Insomniacs Record Book</h3>
+        <p>All-time records for kills, ADR, streaks, biggest ELO sessions, and more — silently updated whenever the records change.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <h3>Teammate Chemistry</h3>
+        <p>Which duo has the best win rate? Who is your best teammate? Find out who you actually perform with — with a minimum sample size to keep it honest.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </div>
+        <h3>Achievements</h3>
+        <p>Thirty Bomb, The Hard Carry, Tilt Queue, Go To Bed — milestones are tracked silently and shown when you ask for them.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <h3>Server Quotes</h3>
+        <p>Save the best (or worst) things people say with a right-click context menu command. Pull a random quote any time with <code>/quote</code>.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Command preview ─────────────────────────────────── -->
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <h2>A few commands to get you started</h2>
+      <p>All commands use Discord's slash command interface — just type <code>/</code> in any channel.</p>
+    </div>
+
+    <div class="command-grid">
+
+      <div class="command-card">
+        <div class="command-card-header">
+          <span class="command-name">/stats</span>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <p class="command-desc">View a full statistics embed for yourself or another player, with buttons to jump to Recent, Maps, and Records.</p>
+        <div class="command-usage">/stats
+/stats user:@Adam
+/stats user:@Adam period:month</div>
+      </div>
+
+      <div class="command-card">
+        <div class="command-card-header">
+          <span class="command-name">/leaderboard</span>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <p class="command-desc">The Insomniacs leaderboard — ranked by ELO, K/D, win rate, or any other supported category via a select menu.</p>
+        <div class="command-usage">/leaderboard</div>
+      </div>
+
+      <div class="command-card">
+        <div class="command-card-header">
+          <span class="command-name">/ping</span>
+          <span class="badge badge-available">✓ Available</span>
+        </div>
+        <p class="command-desc">Check bot status and latency. Useful to confirm the bot is online and responding.</p>
+        <div class="command-usage">/ping</div>
+      </div>
+
+    </div>
+
+    <div style="text-align:center; margin-top:32px;">
+      <a class="btn btn-secondary" href="commands.html">See all commands →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Map stats preview ───────────────────────────────── -->
+<section class="section section-sm" style="background: var(--bg-secondary);">
+  <div class="container">
+    <div class="section-header">
+      <h2>Map statistics that actually matter</h2>
+      <p>See who dominates on Mirage, who drags the team down on Ancient, and which map the Insomniacs should never queue.</p>
+    </div>
+    <div style="max-width:640px; margin: 0 auto;">
+      <div class="callout callout-info">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div>
+          <strong>Per-player and group views</strong>
+          <p><code>/maps</code> shows the whole group's win rate per map. <code>/mapstats map:Mirage user:@Adam</code> drills into one player on one map — games played, K/D, ADR, best performance.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ──────────────────────────────────────────── -->
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--blurple)">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.111 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+      </svg>
+      Insomniacs Bot
+    </div>
+    <div class="footer-links">
+      <a href="index.html">Home</a>
+      <a href="commands.html">Commands</a>
+      <a href="setup.html">Setup</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </div>
+    <p class="footer-copy">Built for the Insomniacs Discord server.</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

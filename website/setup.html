@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Setup — Insomniacs Bot</title>
+  <meta name="description" content="How to set up and run Insomniacs Bot on your own Discord server." />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
+</head>
+<body>
+
+<!-- ── Navigation ──────────────────────────────────────── -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="index.html">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.111 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+      </svg>
+      Insomniacs Bot
+    </a>
+
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="commands.html">Commands</a>
+      <a href="setup.html" class="active">Setup</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot" target="_blank" rel="noopener">GitHub</a>
+    </div>
+
+    <div class="nav-actions">
+      <a class="btn btn-primary btn-sm"
+         href="https://discord.com/oauth2/authorize?client_id=1540898204294582292&permissions=277025770496&scope=bot+applications.commands"
+         target="_blank" rel="noopener">Add to Server</a>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Page header ─────────────────────────────────────── -->
+<div class="page-header">
+  <div class="container">
+    <h1>Setup Guide</h1>
+    <p>Get Insomniacs Bot running locally or in Docker in a few steps.</p>
+  </div>
+</div>
+
+<!-- ── Main content ────────────────────────────────────── -->
+<section class="section">
+  <div class="container" style="max-width: 800px;">
+
+    <!-- Prerequisites -->
+    <h2 class="mb-6" style="font-size:1.4rem;">Prerequisites</h2>
+
+    <div class="table-wrap mb-8">
+      <table>
+        <thead>
+          <tr>
+            <th>Requirement</th>
+            <th>Version</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Node.js</td>
+            <td>22+</td>
+            <td>Download from nodejs.org</td>
+          </tr>
+          <tr>
+            <td>npm</td>
+            <td>bundled with Node</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>PostgreSQL <em>or</em> Docker</td>
+            <td>16+</td>
+            <td>Docker is the easiest option</td>
+          </tr>
+          <tr>
+            <td>Discord application</td>
+            <td>—</td>
+            <td>See step 1 below</td>
+          </tr>
+          <tr>
+            <td>FACEIT API key</td>
+            <td>—</td>
+            <td>Required from Phase 2 onwards</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Step 1 — Discord app -->
+    <h2 class="mb-6" style="font-size:1.4rem;">Part 1 — Discord Application</h2>
+
+    <div class="steps mb-8">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Create a Discord application</h3>
+          <p>Go to the <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a>, click <strong>New Application</strong>, and give it a name.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Add a bot</h3>
+          <p>Under the <strong>Bot</strong> tab, click <strong>Add Bot</strong>. Copy the bot token — you'll need it as <code>DISCORD_TOKEN</code>. Never share this token.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Note your Application ID</h3>
+          <p>Under <strong>General Information</strong>, copy the <strong>Application ID</strong>. This is your <code>DISCORD_CLIENT_ID</code>.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Invite the bot to your server</h3>
+          <p>Use the URL below (replace <code>YOUR_CLIENT_ID</code>). Select the server and authorise. This grants the <code>bot</code> and <code>applications.commands</code> scopes.</p>
+          <pre>https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=277025770496&scope=bot+applications.commands</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>Get your Server ID</h3>
+          <p>In Discord, enable <strong>Developer Mode</strong> (User Settings → Advanced). Right-click your server icon → <strong>Copy Server ID</strong>. This is your <code>DISCORD_GUILD_ID</code>.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Step 2 — FACEIT -->
+    <h2 class="mb-6" style="font-size:1.4rem;">Part 2 — FACEIT API Key</h2>
+
+    <div class="steps mb-8">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Create a FACEIT developer account</h3>
+          <p>Go to <a href="https://developers.faceit.com/" target="_blank" rel="noopener">developers.faceit.com</a> and sign in with your FACEIT account.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Create an application and generate an API key</h3>
+          <p>Create a new application. Under <strong>API Keys</strong>, generate a <strong>Server-Side</strong> key. Copy it as <code>FACEIT_API_KEY</code>.</p>
+          <div class="callout callout-warning mt-4">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div>
+              <strong>Keep it server-side</strong>
+              <p>Never expose your FACEIT API key in client-side code or commit it to version control.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Step 3 — Local setup -->
+    <h2 class="mb-6" style="font-size:1.4rem;">Part 3 — Local Development</h2>
+
+    <div class="steps mb-8">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Clone the repository</h3>
+          <pre>git clone https://github.com/Easton99/Insomniacs-bot.git
+cd Insomniacs-bot</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Install dependencies</h3>
+          <pre>npm install</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Configure environment variables</h3>
+          <p>Copy the example file and fill in your values:</p>
+          <pre>cp .env.example .env</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Start PostgreSQL</h3>
+          <p>Using Docker (recommended):</p>
+          <pre>docker compose up -d postgres</pre>
+          <p>Or start your own PostgreSQL 16 instance and update <code>DATABASE_URL</code> in <code>.env</code>.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>Generate Prisma client and run migrations</h3>
+          <pre>npm run prisma:generate
+npm run prisma:migrate</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h3>Register Discord slash commands</h3>
+          <p>This pushes the command definitions to your guild — they'll appear in Discord immediately.</p>
+          <pre>npm run commands:register</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-body">
+          <h3>Start the bot</h3>
+          <pre>npm run dev</pre>
+          <p>The bot uses <code>tsx --watch</code> in development mode — it will restart automatically when you change a source file.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Docker -->
+    <h2 class="mb-6" style="font-size:1.4rem;">Part 4 — Docker (Production)</h2>
+
+    <div class="steps mb-8">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Fill in <code>.env</code></h3>
+          <p>Make sure <code>.env</code> is configured. The Docker Compose file overrides <code>DATABASE_URL</code> to point at the internal <code>postgres</code> container automatically.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Start everything</h3>
+          <pre>docker compose up -d</pre>
+          <p>This builds the bot image, starts PostgreSQL, and waits for the database to be healthy before launching the bot.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Run migrations inside the container</h3>
+          <p>First-time setup only:</p>
+          <pre>docker compose exec bot npm run prisma:migrate</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>View logs</h3>
+          <pre>docker compose logs -f bot</pre>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Env vars reference -->
+    <h2 class="mb-6" style="font-size:1.4rem;">Environment Variables</h2>
+
+    <div class="table-wrap mb-8">
+      <table>
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Required</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>DISCORD_TOKEN</td>
+            <td>✓</td>
+            <td>—</td>
+            <td>Bot token from Discord Developer Portal</td>
+          </tr>
+          <tr>
+            <td>DISCORD_CLIENT_ID</td>
+            <td>✓</td>
+            <td>—</td>
+            <td>Application ID from Discord Developer Portal</td>
+          </tr>
+          <tr>
+            <td>DISCORD_GUILD_ID</td>
+            <td>✓</td>
+            <td>—</td>
+            <td>ID of the Discord server to register commands to</td>
+          </tr>
+          <tr>
+            <td>FACEIT_API_KEY</td>
+            <td>Phase 2+</td>
+            <td>—</td>
+            <td>Server-side FACEIT Data API key</td>
+          </tr>
+          <tr>
+            <td>DATABASE_URL</td>
+            <td>✓</td>
+            <td>—</td>
+            <td>PostgreSQL connection string</td>
+          </tr>
+          <tr>
+            <td>BOT_TIMEZONE</td>
+            <td></td>
+            <td>Europe/London</td>
+            <td>Timezone used for session grouping and achievements like "Go To Bed"</td>
+          </tr>
+          <tr>
+            <td>CHEMISTRY_MIN_MATCHES</td>
+            <td></td>
+            <td>10</td>
+            <td>Minimum shared matches before labelling a "best" or "worst" teammate</td>
+          </tr>
+          <tr>
+            <td>NODE_ENV</td>
+            <td></td>
+            <td>development</td>
+            <td><code>development</code> or <code>production</code></td>
+          </tr>
+          <tr>
+            <td>LOG_LEVEL</td>
+            <td></td>
+            <td>info</td>
+            <td>Logging level: <code>trace</code> <code>debug</code> <code>info</code> <code>warn</code> <code>error</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- npm scripts -->
+    <h2 class="mb-6" style="font-size:1.4rem;">npm Scripts</h2>
+
+    <div class="table-wrap mb-8">
+      <table>
+        <thead>
+          <tr>
+            <th>Script</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>npm run dev</td>
+            <td>Start in development mode with hot reload (<code>tsx --watch</code>)</td>
+          </tr>
+          <tr>
+            <td>npm run build</td>
+            <td>Compile TypeScript to <code>dist/</code></td>
+          </tr>
+          <tr>
+            <td>npm start</td>
+            <td>Run compiled bot from <code>dist/index.js</code></td>
+          </tr>
+          <tr>
+            <td>npm run lint</td>
+            <td>Run ESLint over <code>src/</code></td>
+          </tr>
+          <tr>
+            <td>npm test</td>
+            <td>Run Vitest test suite</td>
+          </tr>
+          <tr>
+            <td>npm run commands:register</td>
+            <td>Register slash commands to <code>DISCORD_GUILD_ID</code></td>
+          </tr>
+          <tr>
+            <td>npm run prisma:migrate</td>
+            <td>Apply pending database migrations</td>
+          </tr>
+          <tr>
+            <td>npm run prisma:generate</td>
+            <td>Re-generate the Prisma client after schema changes</td>
+          </tr>
+          <tr>
+            <td>npm run prisma:studio</td>
+            <td>Open Prisma Studio (visual database browser)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Done callout -->
+    <div class="callout callout-success">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      <div>
+        <strong>You're set up</strong>
+        <p>Once the bot is online, try <code>/ping</code> in your server to confirm it's responding. Then link your FACEIT account with <code>/link</code> once Phase 2 is released.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Footer ──────────────────────────────────────────── -->
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--blurple)">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.111 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+      </svg>
+      Insomniacs Bot
+    </div>
+    <div class="footer-links">
+      <a href="index.html">Home</a>
+      <a href="commands.html">Commands</a>
+      <a href="setup.html">Setup</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </div>
+    <p class="footer-copy">Built for the Insomniacs Discord server.</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

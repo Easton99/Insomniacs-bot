@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commands — Insomniacs Bot</title>
+  <meta name="description" content="Full command reference for Insomniacs Bot — CS2/FACEIT stats Discord bot." />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
+</head>
+<body>
+
+<!-- ── Navigation ──────────────────────────────────────── -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="index.html">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.111 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+      </svg>
+      Insomniacs Bot
+    </a>
+
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="commands.html" class="active">Commands</a>
+      <a href="setup.html">Setup</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot" target="_blank" rel="noopener">GitHub</a>
+    </div>
+
+    <div class="nav-actions">
+      <a class="btn btn-primary btn-sm"
+         href="https://discord.com/oauth2/authorize?client_id=1540898204294582292&permissions=277025770496&scope=bot+applications.commands"
+         target="_blank" rel="noopener">Add to Server</a>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Page header ─────────────────────────────────────── -->
+<div class="page-header">
+  <div class="container">
+    <h1>Commands</h1>
+    <p>All slash commands available in Insomniacs Bot. Use <code>/</code> in any channel to get started.</p>
+  </div>
+</div>
+
+<!-- ── Main content ────────────────────────────────────── -->
+<section class="section">
+  <div class="container">
+
+    <!-- Search -->
+    <div class="search-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input id="cmd-search" type="text" placeholder="Search commands…" autocomplete="off" />
+    </div>
+
+    <!-- Legend -->
+    <div style="display:flex; gap:16px; margin-bottom:40px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="badge badge-available">✓ Available</span>
+        <span class="text-muted" style="font-size:0.85rem;">Implemented and ready to use</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="badge badge-planned">Planned</span>
+        <span class="text-muted" style="font-size:0.85rem;">On the roadmap, not yet implemented</span>
+      </div>
+    </div>
+
+    <!-- ── General ─────────────────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">General</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/ping</span>
+            <span class="badge badge-available">✓ Available</span>
+          </div>
+          <p class="command-desc">Check bot status and connection latency. Shows round-trip and WebSocket ping.</p>
+          <div class="command-usage">/ping</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Account ─────────────────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">Account Management · Phase 2</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/link</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Link your Discord account to a FACEIT nickname. The bot verifies the account is a CS2 player and stores the stable FACEIT player ID.</p>
+          <div class="command-usage">/link faceit:YourFaceitNickname</div>
+        </div>
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/unlink</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Remove your FACEIT account link from the bot. Your stored match history is retained.</p>
+          <div class="command-usage">/unlink</div>
+        </div>
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/linkstatus</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">View your currently linked FACEIT account, when it was linked, and last sync time.</p>
+          <div class="command-usage">/linkstatus
+/linkstatus user:@Adam</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Player stats ─────────────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">Player Statistics · Phase 4</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/stats</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">
+            Full statistics embed — ELO, level, K/D, ADR, headshot %, win rate, streaks, recent form, favourite map. Includes buttons to jump to Recent, Maps, and Records views.
+          </p>
+          <div class="command-usage">/stats
+/stats user:@Adam
+/stats user:@Adam period:week
+/stats user:@Adam period:month
+/stats user:@Adam period:all</div>
+        </div>
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/recent</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Last 5–10 matches with map, score, W/L, kills, deaths, assists, K/D, ADR, and ELO change.</p>
+          <div class="command-usage">/recent
+/recent user:@Adam</div>
+        </div>
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/form</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Performance summary over a recent window — wins, losses, K/D, ADR, ELO movement, best and worst match, and current streak.</p>
+          <div class="command-usage">/form
+/form user:@Adam
+/form user:@Adam matches:20</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Group stats ─────────────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">Group Statistics · Phase 5</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/leaderboard</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">
+            The Insomniacs leaderboard. Choose a category via select menu — ELO, K/D, win rate, ADR, total kills, longest win streak, most 30-bombs, biggest ELO session, and more.
+          </p>
+          <div class="command-usage">/leaderboard</div>
+        </div>
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/compare</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Head-to-head comparison between two linked players, including stats for matches where both were present.</p>
+          <div class="command-usage">/compare player1:@Adam player2:@Dave</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Maps ───────────────────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">Maps · Phase 5</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/maps</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Map breakdown — matches played, wins, losses, and win rate per map. Group view or individual player view.</p>
+          <div class="command-usage">/maps
+/maps user:@Adam</div>
+        </div>
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/mapstats</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Detailed statistics for a specific map — individual or whole group. Shows games, win rate, K/D, ADR, highest kill game, best performer.</p>
+          <div class="command-usage">/mapstats map:Mirage
+/mapstats map:Ancient user:@Adam</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Records & History ──────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">Records &amp; History · Phase 6</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/records</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">The Insomniacs all-time record book — highest kills, best ADR, longest streaks, most 30-bombs, biggest ELO sessions, and more. Updated silently, never announced.</p>
+          <div class="command-usage">/records</div>
+        </div>
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/session</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Stats for the most recent play session (matches grouped by time gap). Shows games, W/L, ELO change, K/D, ADR, best and worst game, and maps played.</p>
+          <div class="command-usage">/session
+/session user:@Adam</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Chemistry ─────────────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">Chemistry · Phase 7</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/chemistry</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">
+            Duo statistics between linked Insomniacs players — games together, wins together, win rate, K/D, ADR. Shows best teammate, worst teammate, most-played-with, highest and lowest win-rate duo.
+            Requires a minimum match sample (default: 10).
+          </p>
+          <div class="command-usage">/chemistry
+/chemistry user:@Adam</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Achievements ───────────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">Achievements · Phase 8</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/achievements</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">
+            View earned achievements. Achievements are calculated silently from match data and never announced automatically.
+            Examples: <em>Thirty Bomb, The Hard Carry, All That For Nothing, On Fire, Tilt Queue, Go To Bed, The Insomniac.</em>
+          </p>
+          <div class="command-usage">/achievements
+/achievements user:@Adam</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Quotes ─────────────────────────────────────── -->
+    <div class="commands-section">
+      <h2 class="commands-section-title">Quotes · Phase 9</h2>
+      <div class="command-grid">
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/quote</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">Retrieve a random saved quote from the server, optionally filtered to a specific person.</p>
+          <div class="command-usage">/quote
+/quote user:@Adam
+/quote add user:@Adam text:"..."</div>
+        </div>
+
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">Save Quote</span>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+          <p class="command-desc">
+            Right-click context menu command. Right-click any message → Apps → <strong>Save Quote</strong> to archive it — author, text, channel, date, and who saved it are all stored.
+          </p>
+          <div class="command-usage">Right-click message → Apps → Save Quote</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Callout at bottom -->
+    <div class="callout callout-success" style="margin-top: 40px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      <div>
+        <strong>Pull-based only</strong>
+        <p>None of these commands post automatically. The bot never sends unsolicited messages — every response requires a user to actively ask for it.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Footer ──────────────────────────────────────────── -->
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--blurple)">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.111 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+      </svg>
+      Insomniacs Bot
+    </div>
+    <div class="footer-links">
+      <a href="index.html">Home</a>
+      <a href="commands.html">Commands</a>
+      <a href="setup.html">Setup</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/Easton99/Insomniacs-bot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </div>
+    <p class="footer-copy">Built for the Insomniacs Discord server.</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
