@@ -1,3 +1,4 @@
+import { getMatchStats, getPlayerHistory } from '../services/faceit';
 import type { FaceitMatchStats, FaceitMatchPlayerStats } from '../services/faceit';
 
 export interface ProcessedMatch {
@@ -10,6 +11,8 @@ export interface ProcessedMatch {
   assists: number;
   kd: string;
   hsPercent: number;
+  pentaKills: number;
+  eloChange: number | null;
   startedAt: number;
 }
 
@@ -18,6 +21,10 @@ export function formatMapName(map: string): string {
     .replace(/^de_|^cs_|^ar_/, '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function normaliseMapName(input: string): string {
+  return input.toLowerCase().replace(/^de_|^cs_|^ar_/, '').replace(/[\s_-]/g, '');
 }
 
 export function processMatchStats(
@@ -45,6 +52,8 @@ export function processMatchStats(
   if (!playerEntry) return null;
 
   const ps = playerEntry.player_stats;
+  const rawElo = ps['Elo Change'] ?? ps['ELO Change'];
+  const eloChange = rawElo != null ? parseInt(rawElo, 10) : null;
 
   return {
     map: formatMapName(round.round_stats['Map'] ?? 'Unknown'),
@@ -56,6 +65,24 @@ export function processMatchStats(
     assists: parseInt(ps['Assists'] ?? '0', 10),
     kd: ps['K/D Ratio'] ?? '?',
     hsPercent: parseInt(ps['Headshots %'] ?? '0', 10),
+    pentaKills: parseInt(ps['Penta Kills'] ?? '0', 10),
+    eloChange: isNaN(eloChange!) ? null : eloChange,
     startedAt,
   };
+}
+
+export async function fetchMatchesWithStats(faceitId: string, count: number): Promise<ProcessedMatch[]> {
+  const history = await getPlayerHistory(faceitId, count);
+  if (!history.items.length) return [];
+
+  const statsResults = await Promise.allSettled(history.items.map((m) => getMatchStats(m.match_id)));
+
+  const matches: ProcessedMatch[] = [];
+  for (let i = 0; i < history.items.length; i++) {
+    const r = statsResults[i];
+    if (r.status === 'rejected') continue;
+    const match = processMatchStats(r.value, faceitId, history.items[i].started_at);
+    if (match) matches.push(match);
+  }
+  return matches;
 }

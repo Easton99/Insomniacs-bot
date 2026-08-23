@@ -79,6 +79,10 @@ export interface FaceitMatchHistoryItem {
     faction_id: string;
     players: Array<{ player_id: string; nickname: string }>;
   }>;
+  results?: {
+    winner: string;
+    score: Record<string, number>;
+  };
 }
 
 export interface FaceitMatchHistory {
