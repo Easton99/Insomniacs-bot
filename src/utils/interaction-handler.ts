@@ -2,6 +2,8 @@ import { Collection, Interaction } from 'discord.js';
 import { SubCommand } from '../types';
 import logger from './logger';
 
+export const LEADERBOARD_SELECT_ID = 'leaderboard_category';
+
 export async function handleInteraction(
   interaction: Interaction,
   commands: Collection<string, SubCommand>,
@@ -24,6 +26,18 @@ export async function handleInteraction(
       await command.execute(interaction);
     } catch (error) {
       logger.error({ error, command: subcommandName }, 'Command execution failed');
+      await replyWithError(interaction);
+    }
+  } else if (interaction.isStringSelectMenu() && interaction.customId === LEADERBOARD_SELECT_ID) {
+    logger.info({ user: interaction.user.tag, value: interaction.values[0] }, 'Leaderboard category changed');
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { handleSelectMenu } = require('../commands/leaderboard') as {
+        handleSelectMenu(i: typeof interaction): Promise<void>;
+      };
+      await handleSelectMenu(interaction);
+    } catch (error) {
+      logger.error({ error }, 'Leaderboard select menu handler failed');
       await replyWithError(interaction);
     }
   }
