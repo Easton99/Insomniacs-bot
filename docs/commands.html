@@ -25,7 +25,7 @@
   <div class="wrap">
     <span class="eyebrow">// reference</span>
     <h1>Commands</h1>
-    <p>All slash commands available in Insomniacs Bot. Type <code>/</code> in any channel to get started.</p>
+    <p>All commands live under <code>/ic</code>. Type <code>/ic</code> in any channel to get started.</p>
   </div>
 </div>
 
@@ -39,214 +39,189 @@
       <input id="cmd-search" type="text" placeholder="Search commands…" autocomplete="off" />
     </div>
 
-    <div style="display:flex;gap:16px;margin-bottom:40px;flex-wrap:wrap;align-items:center;">
-      <span class="badge badge-available">✓ Available</span>
-      <span style="font-size:13px;color:var(--muted);">Implemented</span>
-      <span class="badge badge-planned" style="margin-left:12px;">Planned</span>
-      <span style="font-size:13px;color:var(--muted);">On the roadmap</span>
-    </div>
-
+    <!-- General -->
     <div class="commands-section" id="general">
       <h2 class="commands-section-title">General</h2>
       <div class="command-grid">
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/ping</span>
+            <span class="command-name">/ic ping</span>
             <span class="badge badge-available">✓ Available</span>
           </div>
           <p class="command-desc">Check bot status and latency. Shows round-trip and WebSocket ping.</p>
-          <div class="command-usage">/ping</div>
+          <div class="command-usage">/ic ping</div>
         </div>
       </div>
     </div>
 
+    <!-- Account Management -->
     <div class="commands-section" id="account">
-      <h2 class="commands-section-title">Account Management · Phase 2</h2>
+      <h2 class="commands-section-title">Account Management</h2>
       <div class="command-grid">
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/link</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic link</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
           <p class="command-desc">Link your Discord account to a FACEIT nickname. The bot verifies it's a CS2 account and stores the stable player ID.</p>
-          <div class="command-usage">/link faceit:YourFaceitNickname</div>
+          <div class="command-usage">/ic link faceit:YourFaceitNickname</div>
         </div>
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/unlink</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic unlink</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Remove your FACEIT account link. Stored match history is retained.</p>
-          <div class="command-usage">/unlink</div>
+          <p class="command-desc">Remove your FACEIT account link.</p>
+          <div class="command-usage">/ic unlink</div>
         </div>
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/linkstatus</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic linkstatus</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">View your currently linked FACEIT account and last sync time.</p>
-          <div class="command-usage">/linkstatus
-/linkstatus user:@Adam</div>
+          <p class="command-desc">View a linked FACEIT account with current live ELO and level.</p>
+          <div class="command-usage">/ic linkstatus
+/ic linkstatus user:@Adam</div>
         </div>
       </div>
     </div>
 
+    <!-- Player Statistics -->
     <div class="commands-section" id="stats">
-      <h2 class="commands-section-title">Player Statistics · Phase 4</h2>
+      <h2 class="commands-section-title">Player Statistics</h2>
       <div class="command-grid">
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/stats</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic stats</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Full statistics embed — ELO, level, K/D, ADR, headshot %, win rate, streaks, recent form, favourite map. Buttons to jump to Recent, Maps, and Records.</p>
-          <div class="command-usage">/stats
-/stats user:@Adam
-/stats user:@Adam period:week
-/stats user:@Adam period:month
-/stats user:@Adam period:all</div>
+          <p class="command-desc">Lifetime stats — ELO, level, K/D, headshot %, win rate, streaks, and recent form.</p>
+          <div class="command-usage">/ic stats
+/ic stats user:@Adam</div>
         </div>
         <div class="command-card" id="recent">
           <div class="command-card-header">
-            <span class="command-name">/recent</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic recent</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Last 5–10 matches with map, score, W/L, kills, deaths, ADR, and ELO change.</p>
-          <div class="command-usage">/recent
-/recent user:@Adam</div>
+          <p class="command-desc">Last 10 matches with map, score, W/L, kills, deaths, and K/D.</p>
+          <div class="command-usage">/ic recent
+/ic recent user:@Adam
+/ic recent count:20</div>
         </div>
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/form</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic form</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Performance summary over a recent window — wins, losses, K/D, ADR, ELO movement, best and worst match, current streak.</p>
-          <div class="command-usage">/form
-/form user:@Adam
-/form user:@Adam matches:20</div>
+          <p class="command-desc">Aggregated performance summary over recent matches — W/L record, avg K/D, avg HS%, best and worst game, map breakdown.</p>
+          <div class="command-usage">/ic form
+/ic form user:@Adam
+/ic form matches:40</div>
         </div>
       </div>
     </div>
 
+    <!-- Group Statistics -->
     <div class="commands-section" id="leaderboard">
-      <h2 class="commands-section-title">Group Statistics · Phase 5</h2>
+      <h2 class="commands-section-title">Group Statistics</h2>
       <div class="command-grid">
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/leaderboard</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic leaderboard</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">The Insomniacs leaderboard. Choose a category via select menu — ELO, K/D, win rate, ADR, total kills, longest win streak, most 30-bombs, biggest ELO session, and more.</p>
-          <div class="command-usage">/leaderboard</div>
+          <p class="command-desc">Insomniacs leaderboard. Use the dropdown to switch between ELO, K/D, win rate, headshots %, matches played, and best win streak.</p>
+          <div class="command-usage">/ic leaderboard</div>
         </div>
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/compare</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic compare</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Head-to-head comparison between two linked players, including stats for matches where both were present.</p>
-          <div class="command-usage">/compare player1:@Adam player2:@Dave</div>
+          <p class="command-desc">Side-by-side lifetime stats comparison between two linked players.</p>
+          <div class="command-usage">/ic compare player1:@Adam player2:@Dave</div>
         </div>
       </div>
     </div>
 
+    <!-- Maps -->
     <div class="commands-section" id="maps">
-      <h2 class="commands-section-title">Maps · Phase 5</h2>
+      <h2 class="commands-section-title">Maps</h2>
       <div class="command-grid">
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/maps</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic maps</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Map breakdown — matches played, wins, losses, and win rate per map. Group view or individual player view.</p>
-          <div class="command-usage">/maps
-/maps user:@Adam</div>
+          <p class="command-desc">Per-map breakdown — games played, wins, losses, win rate, and K/D. Based on last 50 matches.</p>
+          <div class="command-usage">/ic maps
+/ic maps user:@Adam</div>
         </div>
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/mapstats</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic mapstats</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Detailed statistics for a specific map — games, win rate, K/D, ADR, highest kill game, best performer.</p>
-          <div class="command-usage">/mapstats map:Mirage
-/mapstats map:Ancient user:@Adam</div>
+          <p class="command-desc">Detailed statistics for a specific map — games, win rate, avg K/D, avg HS%, best game. Based on last 100 matches.</p>
+          <div class="command-usage">/ic mapstats map:Mirage
+/ic mapstats map:Ancient user:@Adam</div>
         </div>
       </div>
     </div>
 
+    <!-- Records & History -->
     <div class="commands-section" id="records">
-      <h2 class="commands-section-title">Records &amp; History · Phase 6</h2>
+      <h2 class="commands-section-title">Records &amp; History</h2>
       <div class="command-grid">
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/records</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic records</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">The Insomniacs all-time record book — highest kills, best ADR, longest streaks, most 30-bombs, biggest ELO sessions. Updated silently, never announced.</p>
-          <div class="command-usage">/records</div>
+          <p class="command-desc">Insomniacs all-time record book across all linked players — highest ELO, best K/D, best win rate, longest streak, most matches, best kill game.</p>
+          <div class="command-usage">/ic records</div>
         </div>
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/session</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic session</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Stats for the most recent play session — games, W/L, ELO change, K/D, ADR, best and worst game, maps played.</p>
-          <div class="command-usage">/session
-/session user:@Adam</div>
+          <p class="command-desc">Stats from the most recent play session — games, W/L, K/D, HS%, best game, maps played, and ELO change where available.</p>
+          <div class="command-usage">/ic session
+/ic session user:@Adam</div>
         </div>
       </div>
     </div>
 
+    <!-- Chemistry -->
     <div class="commands-section" id="chemistry">
-      <h2 class="commands-section-title">Chemistry · Phase 7</h2>
+      <h2 class="commands-section-title">Chemistry</h2>
       <div class="command-grid">
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/chemistry</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic chemistry</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">Duo statistics — games together, win rate, K/D, ADR. Shows best teammate, worst teammate, most-played-with, highest and lowest win-rate duo. Requires a minimum match sample (default: 10).</p>
-          <div class="command-usage">/chemistry
-/chemistry user:@Adam</div>
+          <p class="command-desc">Duo win rates with other linked players over the last 100 matches. Shows best duo, worst duo, most-played-with, and a full teammate table. Duos under 10 shared games are marked as small sample.</p>
+          <div class="command-usage">/ic chemistry
+/ic chemistry user:@Adam</div>
         </div>
       </div>
     </div>
 
+    <!-- Achievements -->
     <div class="commands-section" id="achievements">
-      <h2 class="commands-section-title">Achievements · Phase 8</h2>
+      <h2 class="commands-section-title">Achievements</h2>
       <div class="command-grid">
         <div class="command-card">
           <div class="command-card-header">
-            <span class="command-name">/achievements</span>
-            <span class="badge badge-planned">Planned</span>
+            <span class="command-name">/ic achievements</span>
+            <span class="badge badge-available">✓ Available</span>
           </div>
-          <p class="command-desc">View earned achievements — calculated silently from match data, never announced. Examples: <em>Thirty Bomb, The Hard Carry, On Fire, Tilt Queue, Go To Bed, The Insomniac.</em></p>
-          <div class="command-usage">/achievements
-/achievements user:@Adam</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="commands-section" id="quotes">
-      <h2 class="commands-section-title">Quotes · Phase 9</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/quote</span>
-            <span class="badge badge-planned">Planned</span>
-          </div>
-          <p class="command-desc">Retrieve a random saved quote, optionally filtered to a specific person.</p>
-          <div class="command-usage">/quote
-/quote user:@Adam
-/quote add user:@Adam text:"..."</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">Save Quote</span>
-            <span class="badge badge-planned">Planned</span>
-          </div>
-          <p class="command-desc">Right-click context menu command. Right-click any message → Apps → <strong>Save Quote</strong>. Stores author, text, channel, date, and who saved it.</p>
-          <div class="command-usage">Right-click message → Apps → Save Quote</div>
+          <p class="command-desc">Earned achievements calculated silently from match history — never announced. Includes <em>Thirty Bomb, The Hard Carry, On Fire, Tilt Queue, Go To Bed, The Insomniac, Unstoppable, Ace,</em> and more.</p>
+          <div class="command-usage">/ic achievements
+/ic achievements user:@Adam</div>
         </div>
       </div>
     </div>
