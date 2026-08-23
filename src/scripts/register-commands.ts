@@ -28,17 +28,29 @@ async function registerCommands(): Promise<void> {
 
   const rest = new REST().setToken(config.DISCORD_TOKEN);
 
-  logger.info(
-    { count: commandData.length, guildId: config.DISCORD_GUILD_ID },
-    'Registering commands…',
-  );
-
-  await rest.put(
-    Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, config.DISCORD_GUILD_ID),
-    { body: commandData },
-  );
-
-  logger.info('Commands registered successfully');
+  if (config.DISCORD_GUILD_ID) {
+    // Guild registration: instant, scoped to one server — good for dev/testing
+    logger.info(
+      { count: commandData.length, guildId: config.DISCORD_GUILD_ID },
+      'Registering commands to guild (instant)…',
+    );
+    await rest.put(
+      Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, config.DISCORD_GUILD_ID),
+      { body: commandData },
+    );
+    logger.info('Guild commands registered');
+  } else {
+    // Global registration: works in every server, propagates within ~1 hour
+    logger.info(
+      { count: commandData.length },
+      'Registering commands globally (may take up to 1 hour to appear)…',
+    );
+    await rest.put(
+      Routes.applicationCommands(config.DISCORD_CLIENT_ID),
+      { body: commandData },
+    );
+    logger.info('Global commands registered');
+  }
 }
 
 registerCommands().catch((error: unknown) => {

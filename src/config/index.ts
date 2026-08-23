@@ -6,7 +6,7 @@ loadEnv();
 const configSchema = z.object({
   DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN is required'),
   DISCORD_CLIENT_ID: z.string().min(1, 'DISCORD_CLIENT_ID is required'),
-  DISCORD_GUILD_ID: z.string().min(1, 'DISCORD_GUILD_ID is required'),
+  DISCORD_GUILD_ID: z.string().optional(),
   FACEIT_API_KEY: z.string().optional(),
   DATABASE_URL: z.string().default('file:./data.db'),
   BOT_TIMEZONE: z.string().default('Europe/London'),
