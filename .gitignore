@@ -56,5 +56,9 @@ desktop.ini
 tmp/
 temp/
 
+# Local project notes / spec files
+insomniacs_bot_claude_prompt.md
+*.prompt.md
+
 # Docker override files (local only)
 docker-compose.override.yml
