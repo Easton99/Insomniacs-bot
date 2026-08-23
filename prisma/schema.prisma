@@ -3,16 +3,29 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-// ── Phase 1: minimal schema — extended in Phase 2+ ───────────────────────────
-
+// Stores Discord → FACEIT account links.
+// All match data is fetched live from FACEIT API — nothing is cached here.
 model DiscordUser {
-  discordId String   @id
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  discordId      String   @id
+  faceitId       String   @unique
+  faceitNickname String
+  linkedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
 
-  @@map("discord_users")
+// User-generated quotes saved via right-click → Save Quote.
+// The only content that cannot be derived from an external API.
+model Quote {
+  id               String   @id @default(cuid())
+  text             String
+  authorDiscordId  String
+  savedByDiscordId String
+  channelId        String
+  messageId        String   @unique
+  quotedAt         DateTime
+  createdAt        DateTime @default(now())
 }

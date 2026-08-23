@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Setup — Insomniacs Bot</title>
-  <meta name="description" content="How to set up and run Insomniacs Bot on your own Discord server." />
+  <meta name="description" content="How to set up and run Insomniacs Bot." />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
 </head>
@@ -34,7 +34,7 @@
   <div class="wrap">
     <span class="eyebrow">// getting started</span>
     <h1>Setup Guide</h1>
-    <p>Get Insomniacs Bot running locally or in Docker in a few steps.</p>
+    <p>No database server required — the bot uses a local SQLite file and pulls all match data live from FACEIT.</p>
   </div>
 </div>
 
@@ -66,11 +66,6 @@
             <td></td>
           </tr>
           <tr>
-            <td>PostgreSQL <em>or</em> Docker</td>
-            <td>16+</td>
-            <td>Docker is the easiest option</td>
-          </tr>
-          <tr>
             <td>Discord application</td>
             <td>—</td>
             <td>See Part 1 below</td>
@@ -82,6 +77,16 @@
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="callout success mb-8">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      <div>
+        <strong>No database server</strong>
+        <p>The bot stores account links and quotes in a local SQLite file (<code>data.db</code>). No PostgreSQL, no Docker, no separate process to manage.</p>
+      </div>
     </div>
 
     <!-- Part 1 — Discord app -->
@@ -167,7 +172,7 @@
     </div>
 
     <!-- Part 3 — Local setup -->
-    <h2 class="mb-6" style="font-size:1.4rem;">Part 3 — Local Development</h2>
+    <h2 class="mb-6" style="font-size:1.4rem;">Part 3 — Run the Bot</h2>
 
     <div class="steps mb-8">
 
@@ -192,7 +197,7 @@ cd Insomniacs-bot</pre>
         <div class="step-num">3</div>
         <div class="step-body">
           <h3>Configure environment variables</h3>
-          <p>Copy the example file and fill in your values:</p>
+          <p>Copy the example file and fill in <code>DISCORD_TOKEN</code>, <code>DISCORD_CLIENT_ID</code>, <code>DISCORD_GUILD_ID</code>, and <code>FACEIT_API_KEY</code>:</p>
           <pre>cp .env.example .env</pre>
         </div>
       </div>
@@ -200,33 +205,22 @@ cd Insomniacs-bot</pre>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-body">
-          <h3>Start PostgreSQL</h3>
-          <p>Using Docker (recommended):</p>
-          <pre>docker compose up -d postgres</pre>
-          <p>Or start your own PostgreSQL 16+ instance and update <code>DATABASE_URL</code> in <code>.env</code>.</p>
+          <h3>Set up the database</h3>
+          <p>Creates the local SQLite file and applies the schema — one command, done:</p>
+          <pre>npm run prisma:migrate</pre>
         </div>
       </div>
 
       <div class="step">
         <div class="step-num">5</div>
         <div class="step-body">
-          <h3>Generate Prisma client and run migrations</h3>
-          <pre>npm run prisma:generate
-npm run prisma:migrate</pre>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-num">6</div>
-        <div class="step-body">
           <h3>Register Discord slash commands</h3>
-          <p>Pushes the command definitions to your guild — they appear in Discord immediately.</p>
           <pre>npm run commands:register</pre>
         </div>
       </div>
 
       <div class="step">
-        <div class="step-num">7</div>
+        <div class="step-num">6</div>
         <div class="step-body">
           <h3>Start the bot</h3>
           <pre>npm run dev</pre>
@@ -236,8 +230,10 @@ npm run prisma:migrate</pre>
 
     </div>
 
-    <!-- Part 4 — Docker -->
-    <h2 class="mb-6" style="font-size:1.4rem;">Part 4 — Docker (Production)</h2>
+    <!-- Docker (optional) -->
+    <h2 class="mb-6" style="font-size:1.4rem;">Production — Docker (optional)</h2>
+
+    <p class="text-muted mb-6" style="font-size:0.9rem;">For running on a server 24/7. Docker is not required for development.</p>
 
     <div class="steps mb-8">
 
@@ -245,23 +241,22 @@ npm run prisma:migrate</pre>
         <div class="step-num">1</div>
         <div class="step-body">
           <h3>Fill in <code>.env</code></h3>
-          <p>Make sure <code>.env</code> is fully configured. The Docker Compose file overrides <code>DATABASE_URL</code> to point at the internal <code>postgres</code> container automatically.</p>
+          <p>The Compose file overrides <code>DATABASE_URL</code> to store the SQLite file in a named volume (<code>bot_data</code>) so it persists across container rebuilds.</p>
         </div>
       </div>
 
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
-          <h3>Start everything</h3>
+          <h3>Start</h3>
           <pre>docker compose up -d</pre>
-          <p>Builds the bot image, starts PostgreSQL, and waits for the database to be healthy before launching.</p>
         </div>
       </div>
 
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
-          <h3>Run migrations (first time only)</h3>
+          <h3>Apply migrations (first time only)</h3>
           <pre>docker compose exec bot npm run prisma:migrate</pre>
         </div>
       </div>
@@ -316,15 +311,15 @@ npm run prisma:migrate</pre>
           </tr>
           <tr>
             <td>DATABASE_URL</td>
-            <td>✓</td>
-            <td>—</td>
-            <td>PostgreSQL connection string</td>
+            <td></td>
+            <td>file:./data.db</td>
+            <td>SQLite file path — change if you want the db somewhere else</td>
           </tr>
           <tr>
             <td>BOT_TIMEZONE</td>
             <td></td>
             <td>Europe/London</td>
-            <td>Timezone used for session grouping and achievements like "Go To Bed"</td>
+            <td>Timezone for session grouping and the "Go To Bed" achievement</td>
           </tr>
           <tr>
             <td>CHEMISTRY_MIN_MATCHES</td>
@@ -386,7 +381,7 @@ npm run prisma:migrate</pre>
           </tr>
           <tr>
             <td>npm run prisma:migrate</td>
-            <td>Apply pending database migrations</td>
+            <td>Apply pending schema changes (creates <code>data.db</code> on first run)</td>
           </tr>
           <tr>
             <td>npm run prisma:generate</td>
@@ -400,7 +395,6 @@ npm run prisma:migrate</pre>
       </table>
     </div>
 
-    <!-- Done callout -->
     <div class="callout success">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="20 6 9 17 4 12"/>

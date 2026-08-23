@@ -8,7 +8,7 @@ const configSchema = z.object({
   DISCORD_CLIENT_ID: z.string().min(1, 'DISCORD_CLIENT_ID is required'),
   DISCORD_GUILD_ID: z.string().min(1, 'DISCORD_GUILD_ID is required'),
   FACEIT_API_KEY: z.string().optional(),
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  DATABASE_URL: z.string().default('file:./data.db'),
   BOT_TIMEZONE: z.string().default('Europe/London'),
   CHEMISTRY_MIN_MATCHES: z.coerce.number().int().positive().default(10),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

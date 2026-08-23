@@ -52,6 +52,12 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
+# SQLite database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # Temp / scratch
 tmp/
 temp/
