@@ -1,0 +1,39 @@
+{
+  "name": "insomniacs-bot",
+  "version": "0.1.0",
+  "description": "A private Discord bot for the Insomniacs server focused on CS2/FACEIT statistics",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src/ --ext .ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "commands:register": "tsx src/scripts/register-commands.ts",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "eslint": "^8.57.1",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

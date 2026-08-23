@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.*
+!.env.example
+.env.local
+.env.production
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Prisma generated files
+.prisma/
+# Keep schema and migrations — do NOT ignore prisma/
+
+# Editor / IDE
+.vscode/
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V00
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Temp / scratch
+tmp/
+temp/
+
+# Docker override files (local only)
+docker-compose.override.yml
