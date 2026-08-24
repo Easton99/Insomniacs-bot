@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import { db } from '../database/client';
-import { FaceitNotFoundError, getPlayerById } from '../services/faceit';
+import { FaceitNotFoundError, FaceitRateLimitError, getPlayerById } from '../services/faceit';
 import logger from '../utils/logger';
 
 export const subcommand = new SlashCommandSubcommandBuilder()
@@ -32,6 +32,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   try {
     player = await getPlayerById(linked.faceitId);
   } catch (err) {
+    if (err instanceof FaceitRateLimitError) throw err;
     if (err instanceof FaceitNotFoundError) {
       await interaction.editReply({
         content: `Linked to **${linked.faceitNickname}** but FACEIT returned no data — the account may have been deleted or renamed.`,

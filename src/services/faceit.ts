@@ -3,6 +3,20 @@ import logger from '../utils/logger';
 
 const BASE_URL = 'https://open.faceit.com/data/v4';
 
+let rlRemaining: number | null = null;
+let rlResetAt: number | null = null; // epoch ms
+
+export function getFaceitRateLimitStatus(): { remaining: number | null; resetsAt: number | null } {
+  return { remaining: rlRemaining, resetsAt: rlResetAt };
+}
+
+function updateRateLimitHeaders(headers: Headers): void {
+  const remaining = headers.get('X-RateLimit-Remaining') ?? headers.get('X-Rate-Limit-Remaining');
+  const reset = headers.get('X-RateLimit-Reset') ?? headers.get('X-Rate-Limit-Reset');
+  if (remaining !== null) rlRemaining = parseInt(remaining, 10);
+  if (reset !== null) rlResetAt = parseInt(reset, 10) * 1000;
+}
+
 export interface FaceitPlayer {
   player_id: string;
   nickname: string;
@@ -38,9 +52,25 @@ export class FaceitUnconfiguredError extends Error {
   }
 }
 
+export class FaceitRateLimitError extends Error {
+  constructor(public readonly resetsAt: number | null) {
+    super('FACEIT API rate limit reached');
+    this.name = 'FaceitRateLimitError';
+  }
+}
+
 async function faceitFetch<T>(path: string): Promise<T> {
   if (!config.FACEIT_API_KEY) {
     throw new FaceitUnconfiguredError();
+  }
+
+  if (rlRemaining !== null && rlRemaining <= 0) {
+    const now = Date.now();
+    if (rlResetAt === null || now < rlResetAt) {
+      throw new FaceitRateLimitError(rlResetAt);
+    }
+    rlRemaining = null;
+    rlResetAt = null;
   }
 
   const url = `${BASE_URL}${path}`;
@@ -53,10 +83,18 @@ async function faceitFetch<T>(path: string): Promise<T> {
     },
   });
 
+  updateRateLimitHeaders(res.headers);
+
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     logger.debug({ status: res.status, path, body }, 'FACEIT API non-OK response');
     if (res.status === 404) throw new FaceitNotFoundError();
+    if (res.status === 429) {
+      const retryAfter = res.headers.get('Retry-After');
+      rlRemaining = 0;
+      if (retryAfter) rlResetAt = Date.now() + parseInt(retryAfter, 10) * 1000;
+      throw new FaceitRateLimitError(rlResetAt);
+    }
     throw new FaceitApiError(res.status, body);
   }
 

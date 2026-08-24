@@ -8,7 +8,7 @@ import {
   StringSelectMenuOptionBuilder,
 } from 'discord.js';
 import { db } from '../database/client';
-import { FaceitApiError, getPlayerById, getPlayerLifetimeStats } from '../services/faceit';
+import { FaceitApiError, FaceitRateLimitError, getPlayerById, getPlayerLifetimeStats } from '../services/faceit';
 import { LEADERBOARD_SELECT_ID } from '../utils/interaction-handler';
 import logger from '../utils/logger';
 
@@ -66,6 +66,7 @@ async function fetchAllPlayers(): Promise<PlayerRow[]> {
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
     if (r.status === 'rejected') {
+      if (r.reason instanceof FaceitRateLimitError) throw r.reason;
       if (r.reason instanceof FaceitApiError) logger.warn({ faceitId: users[i].faceitId }, 'Skipping player — API error');
       continue;
     }

@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import { db } from '../database/client';
-import { FaceitNotFoundError, FaceitUnconfiguredError, getPlayerByNickname } from '../services/faceit';
+import { FaceitNotFoundError, FaceitRateLimitError, FaceitUnconfiguredError, getPlayerByNickname } from '../services/faceit';
 import logger from '../utils/logger';
 
 export const subcommand = new SlashCommandSubcommandBuilder()
@@ -34,6 +34,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   try {
     player = await getPlayerByNickname(nickname);
   } catch (err) {
+    if (err instanceof FaceitRateLimitError) throw err;
     if (err instanceof FaceitNotFoundError) {
       await interaction.editReply({
         embeds: [

@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import { db } from '../database/client';
-import { FaceitApiError, getMatchStats, getPlayerById, getPlayerHistory } from '../services/faceit';
+import { FaceitApiError, FaceitRateLimitError, getMatchStats, getPlayerById, getPlayerHistory } from '../services/faceit';
 import { processMatchStats } from '../utils/match-utils';
 import logger from '../utils/logger';
 
@@ -37,6 +37,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       getPlayerHistory(linked.faceitId, count),
     ]);
   } catch (err) {
+    if (err instanceof FaceitRateLimitError) throw err;
     if (err instanceof FaceitApiError) logger.error({ err }, 'FACEIT API error during /ic recent');
     await interaction.editReply({ content: 'Could not reach the FACEIT API right now. Try again in a moment.' });
     return;

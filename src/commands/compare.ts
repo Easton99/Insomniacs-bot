@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import { db } from '../database/client';
-import { FaceitApiError, getPlayerById, getPlayerLifetimeStats } from '../services/faceit';
+import { FaceitApiError, FaceitRateLimitError, getPlayerById, getPlayerLifetimeStats } from '../services/faceit';
 import logger from '../utils/logger';
 
 export const subcommand = new SlashCommandSubcommandBuilder()
@@ -44,6 +44,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       Promise.all([getPlayerById(link2!.faceitId), getPlayerLifetimeStats(link2!.faceitId)]),
     ]);
   } catch (err) {
+    if (err instanceof FaceitRateLimitError) throw err;
     if (err instanceof FaceitApiError) logger.error({ err }, 'FACEIT API error during /ic compare');
     await interaction.editReply({ content: 'Could not reach the FACEIT API right now. Try again in a moment.' });
     return;

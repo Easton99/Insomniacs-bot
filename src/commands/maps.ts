@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import { db } from '../database/client';
-import { FaceitApiError, getPlayerById } from '../services/faceit';
+import { FaceitApiError, FaceitRateLimitError, getPlayerById } from '../services/faceit';
 import { fetchMatchesWithStats } from '../utils/match-utils';
 import logger from '../utils/logger';
 
@@ -34,6 +34,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       fetchMatchesWithStats(linked.faceitId, 50),
     ]);
   } catch (err) {
+    if (err instanceof FaceitRateLimitError) throw err;
     if (err instanceof FaceitApiError) logger.error({ err }, 'FACEIT API error during /ic maps');
     await interaction.editReply({ content: 'Could not reach the FACEIT API right now. Try again in a moment.' });
     return;

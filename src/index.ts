@@ -18,7 +18,7 @@ async function main(): Promise<void> {
     logger.warn({ dbError }, 'Database unavailable — bot will start without DB (commands requiring storage will fail)');
   }
 
-  const { commands } = loadCommands();
+  const { commands, standaloneCommands } = loadCommands();
 
   client.once(Events.ClientReady, (readyClient) => {
     logger.info({ tag: readyClient.user.tag }, 'Bot online');
@@ -29,7 +29,7 @@ async function main(): Promise<void> {
       { type: interaction.type, commandName: 'commandName' in interaction ? interaction.commandName : undefined },
       'Interaction received',
     );
-    handleInteraction(interaction, commands).catch((error: unknown) => {
+    handleInteraction(interaction, commands, standaloneCommands).catch((error: unknown) => {
       logger.error({ error }, 'Unhandled error in interaction handler');
     });
   });
