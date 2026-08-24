@@ -5,8 +5,10 @@ services:
     environment:
       DATABASE_URL: file:/app/data/data.db
     volumes:
-      - bot_data:/app/data
+      - ./data:/app/data
     restart: unless-stopped
-
-volumes:
-  bot_data:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
