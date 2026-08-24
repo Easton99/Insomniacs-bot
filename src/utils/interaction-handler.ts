@@ -1,6 +1,7 @@
 import { Collection, Interaction } from 'discord.js';
 import { SubCommand, StandaloneCommand } from '../types';
 import { FaceitRateLimitError } from '../services/faceit';
+import { POLL_END_PREFIX, handlePollEnd } from '../commands/poll';
 import logger from './logger';
 
 export const LEADERBOARD_SELECT_ID = 'leaderboard_category';
@@ -52,6 +53,13 @@ export async function handleInteraction(
       await command.execute(interaction);
     } catch (err) {
       logger.error({ err, command: commandName }, 'Command execution failed');
+      await replyWithError(interaction);
+    }
+  } else if (interaction.isButton() && interaction.customId.startsWith(POLL_END_PREFIX)) {
+    try {
+      await handlePollEnd(interaction);
+    } catch (error) {
+      logger.error({ error }, 'Poll end button handler failed');
       await replyWithError(interaction);
     }
   } else if (interaction.isStringSelectMenu() && interaction.customId === LEADERBOARD_SELECT_ID) {
