@@ -7,7 +7,7 @@ const configSchema = z.object({
   DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN is required'),
   DISCORD_CLIENT_ID: z.string().min(1, 'DISCORD_CLIENT_ID is required'),
   DISCORD_GUILD_ID: z.string().optional(),
-  BOT_OWNER_ID: z.string().optional(),
+  BOT_OWNER_ID: z.string().default('157554140569010176'),
   FACEIT_API_KEY: z.string().optional(),
   DATABASE_URL: z.string().default('file:./data.db'),
   BOT_TIMEZONE: z.string().default('Europe/London'),
