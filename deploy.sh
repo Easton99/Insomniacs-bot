@@ -4,7 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "Pulling latest..."
-git pull
+git fetch origin main
+git reset --hard origin/main
 
 echo "Building image..."
 docker compose build
