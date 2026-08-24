@@ -9,8 +9,8 @@ git pull
 echo "Building image..."
 docker compose build
 
-echo "Running migrations..."
-docker compose run --rm bot npx prisma migrate deploy
+echo "Syncing database schema..."
+docker compose run --rm bot npx prisma db push --skip-generate
 
 echo "Restarting bot..."
 docker compose up -d
