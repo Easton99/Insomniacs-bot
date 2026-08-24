@@ -47,13 +47,13 @@ async function main(): Promise<void> {
     const embed = new EmbedBuilder()
       .setColor(0xff6b35)
       .setTitle('👋 Thanks for adding Insomniacs Bot!')
-      .setDescription('A Discord bot built for friend groups. Check CS2 stats, run polls, and more.')
+      .setDescription('A Discord bot built for friend groups. Check FACEIT stats, run polls, and more.')
       .addFields(
         { name: '🌐 Website', value: '[hipphamster.online](https://www.hipphamster.online)', inline: true },
         { name: '📖 Commands', value: '[All commands](https://www.hipphamster.online/commands.html)', inline: true },
         { name: '💡 Feature Requests', value: '[Suggest something](https://www.hipphamster.online/feature-request.html)', inline: true },
       )
-      .setFooter({ text: 'Use /ic help to see all available commands' })
+      .setFooter({ text: 'Use /ic link to connect your FACEIT account and get started' })
       .setTimestamp();
 
     targetChannel.send({ embeds: [embed] })
