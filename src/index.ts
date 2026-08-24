@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, REST, Routes } from 'discord.js';
+import { ChannelType, Client, EmbedBuilder, Events, GatewayIntentBits, PermissionFlagsBits, REST, Routes, TextChannel } from 'discord.js';
 import { config } from './config';
 import logger from './utils/logger';
 import { connectDatabase, disconnectDatabase } from './database/client';
@@ -32,6 +32,33 @@ async function main(): Promise<void> {
       .put(Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, guild.id), { body: commandData })
       .then(() => logger.info({ guildId: guild.id, name: guild.name }, 'Registered commands to new guild'))
       .catch((err: unknown) => logger.error({ err, guildId: guild.id }, 'Failed to register commands to new guild'));
+
+    const targetChannel = guild.systemChannel ?? guild.channels.cache
+      .filter((ch): ch is TextChannel => ch.type === ChannelType.GuildText)
+      .filter((ch) => guild.members.me ? ch.permissionsFor(guild.members.me).has(PermissionFlagsBits.SendMessages) : false)
+      .sort((a, b) => a.rawPosition - b.rawPosition)
+      .first();
+
+    if (!targetChannel) {
+      logger.warn({ guildId: guild.id }, 'No suitable channel to send welcome message');
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xff6b35)
+      .setTitle('👋 Thanks for adding Insomniacs Bot!')
+      .setDescription('A FACEIT CS2 stats bot built for friend groups. Link your FACEIT account to get started.')
+      .addFields(
+        { name: '🌐 Website', value: '[hipphamster.online](https://www.hipphamster.online)', inline: true },
+        { name: '📖 Commands', value: '[All commands](https://www.hipphamster.online/commands.html)', inline: true },
+        { name: '💡 Feature Requests', value: '[Suggest something](https://www.hipphamster.online/feature-request.html)', inline: true },
+      )
+      .setFooter({ text: 'Use /ic link to connect your FACEIT account' })
+      .setTimestamp();
+
+    targetChannel.send({ embeds: [embed] })
+      .then(() => logger.info({ guildId: guild.id, channelId: targetChannel.id }, 'Sent welcome message'))
+      .catch((err: unknown) => logger.error({ err, guildId: guild.id }, 'Failed to send welcome message'));
   });
 
   client.on(Events.InteractionCreate, (interaction) => {
