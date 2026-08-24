@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Events, GatewayIntentBits, REST, Routes } from 'discord.js';
 import { config } from './config';
 import logger from './utils/logger';
 import { connectDatabase, disconnectDatabase } from './database/client';
@@ -22,6 +22,16 @@ async function main(): Promise<void> {
 
   client.once(Events.ClientReady, (readyClient) => {
     logger.info({ tag: readyClient.user.tag }, 'Bot online');
+  });
+
+  client.on(Events.GuildCreate, (guild) => {
+    const rest = new REST().setToken(config.DISCORD_TOKEN);
+    const { standaloneCommands, parentCommand } = loadCommands();
+    const commandData = [parentCommand.toJSON(), ...standaloneCommands.map((c) => c.command.toJSON())];
+    rest
+      .put(Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, guild.id), { body: commandData })
+      .then(() => logger.info({ guildId: guild.id, name: guild.name }, 'Registered commands to new guild'))
+      .catch((err: unknown) => logger.error({ err, guildId: guild.id }, 'Failed to register commands to new guild'));
   });
 
   client.on(Events.InteractionCreate, (interaction) => {
