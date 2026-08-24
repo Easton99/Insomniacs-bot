@@ -40,21 +40,6 @@
       <input id="cmd-search" type="text" placeholder="Search commands…" autocomplete="off" />
     </div>
 
-    <!-- General -->
-    <div class="commands-section" id="general">
-      <h2 class="commands-section-title">General</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic ping</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Check bot status and latency. Shows round-trip and WebSocket ping.</p>
-          <div class="command-usage">/ic ping</div>
-        </div>
-      </div>
-    </div>
-
     <!-- Account Management -->
     <div class="commands-section" id="account">
       <h2 class="commands-section-title">Account Management</h2>
@@ -83,6 +68,14 @@
           <p class="command-desc">View a linked FACEIT account with current live ELO and level.</p>
           <div class="command-usage">/ic linkstatus
 /ic linkstatus user:@Adam</div>
+        </div>
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/ic adminunlink</span>
+            <span class="badge badge-available">✓ Available</span>
+          </div>
+          <p class="command-desc">Remove another user's FACEIT account link. Server administrators only.</p>
+          <div class="command-usage">/ic adminunlink user:@Adam</div>
         </div>
       </div>
     </div>
@@ -223,6 +216,30 @@
           <p class="command-desc">Earned achievements calculated silently from match history — never announced. Includes <em>Thirty Bomb, The Hard Carry, On Fire, Tilt Queue, Go To Bed, The Insomniac, Unstoppable, Ace,</em> and more.</p>
           <div class="command-usage">/ic achievements
 /ic achievements user:@Adam</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- General -->
+    <div class="commands-section" id="general">
+      <h2 class="commands-section-title">General</h2>
+      <div class="command-grid">
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/ic poll</span>
+            <span class="badge badge-available">✓ Available</span>
+          </div>
+          <p class="command-desc">Create a poll with up to 5 options. The bot adds emoji reactions for voting. Only the creator can end the poll early; clicking End Poll shows the final vote counts.</p>
+          <div class="command-usage">/ic poll question:Best map? option1:Mirage option2:Inferno
+/ic poll question:When? option1:Tonight option2:Tomorrow duration:48</div>
+        </div>
+        <div class="command-card">
+          <div class="command-card-header">
+            <span class="command-name">/ic ping</span>
+            <span class="badge badge-available">✓ Available</span>
+          </div>
+          <p class="command-desc">Check bot status and latency. Shows round-trip and WebSocket ping.</p>
+          <div class="command-usage">/ic ping</div>
         </div>
       </div>
     </div>
