@@ -1,5 +1,6 @@
-import { ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits, SlashCommandSubcommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
 import { db } from '../database/client';
+import { config } from '../config';
 
 export const subcommand = new SlashCommandSubcommandBuilder()
   .setName('adminunlink')
@@ -11,13 +12,13 @@ export const subcommand = new SlashCommandSubcommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+  if (!config.BOT_OWNER_ID || interaction.user.id !== config.BOT_OWNER_ID) {
     await interaction.editReply({
       embeds: [
         new EmbedBuilder()
           .setColor(0xcc3333)
           .setTitle('Permission denied')
-          .setDescription('Only server administrators can use this command.'),
+          .setDescription('This command is restricted to the bot owner.'),
       ],
     });
     return;
