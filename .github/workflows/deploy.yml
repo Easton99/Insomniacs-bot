@@ -14,4 +14,4 @@ jobs:
           printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           echo "51.195.138.202 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMXjoVnYCXDafdQz3Pa0RhYfg/2RlRKc7yOw/0z1kc5v" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key claude@51.195.138.202 "bash /srv/compose/insomniacs-bot/deploy.sh && cd /srv/compose/insomniacs-bot && docker compose run --rm -e DISCORD_GUILD_ID= bot node dist/scripts/register-commands.js"
+          ssh -i ~/.ssh/deploy_key claude@51.195.138.202 "bash /srv/compose/insomniacs-bot/deploy.sh && cd /srv/compose/insomniacs-bot && docker compose run --rm -e DISCORD_GUILD_ID= bot node dist/scripts/register-commands.js && docker compose run --rm bot node dist/scripts/clear-guild-commands.js"

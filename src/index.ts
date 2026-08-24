@@ -1,4 +1,4 @@
-import { ChannelType, Client, EmbedBuilder, Events, GatewayIntentBits, PermissionFlagsBits, REST, Routes, TextChannel } from 'discord.js';
+import { ChannelType, Client, EmbedBuilder, Events, GatewayIntentBits, PermissionFlagsBits, TextChannel } from 'discord.js';
 import { config } from './config';
 import logger from './utils/logger';
 import { connectDatabase, disconnectDatabase } from './database/client';
@@ -25,14 +25,6 @@ async function main(): Promise<void> {
   });
 
   client.on(Events.GuildCreate, (guild) => {
-    const rest = new REST().setToken(config.DISCORD_TOKEN);
-    const { standaloneCommands, parentCommand } = loadCommands();
-    const commandData = [parentCommand.toJSON(), ...standaloneCommands.map((c) => c.command.toJSON())];
-    rest
-      .put(Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, guild.id), { body: commandData })
-      .then(() => logger.info({ guildId: guild.id, name: guild.name }, 'Registered commands to new guild'))
-      .catch((err: unknown) => logger.error({ err, guildId: guild.id }, 'Failed to register commands to new guild'));
-
     const targetChannel = guild.systemChannel ?? guild.channels.cache
       .filter((ch): ch is TextChannel => ch.type === ChannelType.GuildText)
       .filter((ch) => guild.members.me ? ch.permissionsFor(guild.members.me).has(PermissionFlagsBits.SendMessages) : false)
