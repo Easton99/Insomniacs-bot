@@ -61,7 +61,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       url: `https://www.faceit.com/en/players/${encodeURIComponent(player.nickname)}`,
       iconURL: player.avatar || undefined,
     })
-    .setTitle('CS2 Statistics')
+    .setTitle('FACEIT CS2 Statistics')
     .addFields(
       { name: 'ELO', value: cs2 ? cs2.faceit_elo.toString() : '?', inline: true },
       { name: 'Level', value: cs2 ? cs2.skill_level.toString() : '?', inline: true },
