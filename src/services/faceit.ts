@@ -166,10 +166,17 @@ export async function getPlayerLifetimeStats(playerId: string): Promise<FaceitPl
   return faceitFetch<FaceitPlayerStats>(`/players/${playerId}/stats/cs2`);
 }
 
-export async function getPlayerHistory(playerId: string, limit = 10, offset = 0): Promise<FaceitMatchHistory> {
-  return faceitFetch<FaceitMatchHistory>(
-    `/players/${playerId}/history?game=cs2&limit=${limit}&offset=${offset}`,
-  );
+export async function getPlayerHistory(
+  playerId: string,
+  limit = 10,
+  offset = 0,
+  from?: number,
+  to?: number,
+): Promise<FaceitMatchHistory> {
+  let url = `/players/${playerId}/history?game=cs2&limit=${limit}&offset=${offset}`;
+  if (from !== undefined) url += `&from=${from}`;
+  if (to !== undefined) url += `&to=${to}`;
+  return faceitFetch<FaceitMatchHistory>(url);
 }
 
 export async function getMatchStats(matchId: string): Promise<FaceitMatchStats> {
