@@ -66,7 +66,7 @@ async function faceitFetch<T>(path: string): Promise<T> {
 
   if (rlRemaining !== null && rlRemaining <= 0) {
     const now = Date.now();
-    if (rlResetAt === null || now < rlResetAt) {
+    if (rlResetAt !== null && now < rlResetAt) {
       throw new FaceitRateLimitError(rlResetAt);
     }
     rlRemaining = null;
