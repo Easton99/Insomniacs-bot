@@ -82,13 +82,26 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  await db.discordUser.create({
-    data: {
-      discordId: interaction.user.id,
-      faceitId: player.player_id,
-      faceitNickname: player.nickname,
-    },
-  });
+  try {
+    await db.discordUser.create({
+      data: {
+        discordId: interaction.user.id,
+        faceitId: player.player_id,
+        faceitNickname: player.nickname,
+      },
+    });
+  } catch {
+    // Unique constraint — another Discord user linked this FACEIT account between our conflict check and create
+    await interaction.editReply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xcc3333)
+          .setTitle('Already claimed')
+          .setDescription(`**${player.nickname}** is already linked to another Discord account.`),
+      ],
+    });
+    return;
+  }
 
   const cs2 = player.games.cs2;
   const embed = new EmbedBuilder()

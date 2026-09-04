@@ -73,7 +73,12 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const message = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
 
   for (let i = 0; i < options.length; i++) {
-    await message.react(OPTION_EMOJIS[i]);
+    try {
+      await message.react(OPTION_EMOJIS[i]);
+    } catch {
+      // Missing reaction permission — poll still works, just without emoji reactions
+      break;
+    }
   }
 }
 
