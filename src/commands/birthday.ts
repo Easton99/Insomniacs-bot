@@ -11,6 +11,7 @@ import {
   MONTH_NAMES,
   daysUntilBirthday,
   formatBirthday,
+  formatHour,
   getZonedDate,
   isValidBirthday,
 } from '../utils/birthday-utils';
@@ -23,15 +24,15 @@ type GuildInteraction = ChatInputCommandInteraction<'cached' | 'raw'>;
 
 export const subcommand = new SlashCommandSubcommandBuilder()
   .setName('birthday')
-  .setDescription('Set, remove or list birthdays — the bot wishes happy birthday on the day')
+  .setDescription('Set, remove or list birthdays — the bot posts a week before and on the day')
   .addStringOption((opt) =>
     opt
       .setName('action')
       .setDescription('What to do')
       .setRequired(true)
       .addChoices(
-        { name: 'set — save your birthday', value: 'set' },
-        { name: 'remove — delete your birthday', value: 'remove' },
+        { name: 'set — save a birthday', value: 'set' },
+        { name: 'remove — delete a birthday', value: 'remove' },
         { name: 'list — upcoming birthdays', value: 'list' },
         { name: 'channel — (admin) set the announcement channel', value: 'channel' },
       ),
@@ -45,6 +46,9 @@ export const subcommand = new SlashCommandSubcommandBuilder()
       .setDescription('Month (for set)')
       .addChoices(...MONTH_NAMES.map((name, i) => ({ name, value: i + 1 }))),
   )
+  .addUserOption((opt) =>
+    opt.setName('user').setDescription('(Admin) Set or remove someone else\'s birthday'),
+  )
   .addChannelOption((opt) =>
     opt
       .setName('channel')
@@ -54,6 +58,34 @@ export const subcommand = new SlashCommandSubcommandBuilder()
 
 function errorEmbed(title: string, description: string): EmbedBuilder {
   return new EmbedBuilder().setColor(ERROR).setTitle(title).setDescription(description);
+}
+
+function isAdmin(interaction: GuildInteraction): boolean {
+  return (
+    interaction.user.id === config.BOT_OWNER_ID ||
+    interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild)
+  );
+}
+
+/**
+ * Resolves whose birthday is being changed. Returns null (after replying) if a
+ * non-admin tries to change someone else's.
+ */
+async function resolveTarget(interaction: GuildInteraction): Promise<{ id: string; self: boolean } | null> {
+  const user = interaction.options.getUser('user');
+  if (!user || user.id === interaction.user.id) return { id: interaction.user.id, self: true };
+
+  if (!isAdmin(interaction)) {
+    await interaction.editReply({
+      embeds: [errorEmbed('Permission denied', 'You need the **Manage Server** permission to change someone else\'s birthday.')],
+    });
+    return null;
+  }
+  if (user.bot) {
+    await interaction.editReply({ embeds: [errorEmbed('Not allowed', 'Bots don\'t have birthdays.')] });
+    return null;
+  }
+  return { id: user.id, self: false };
 }
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -78,6 +110,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 async function handleSet(interaction: GuildInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
+  const target = await resolveTarget(interaction);
+  if (!target) return;
+
   const day = interaction.options.getInteger('day');
   const month = interaction.options.getInteger('month');
 
@@ -94,22 +129,28 @@ async function handleSet(interaction: GuildInteraction): Promise<void> {
     return;
   }
 
-  const key = { guildId: interaction.guildId, discordId: interaction.user.id };
+  const key = { guildId: interaction.guildId, discordId: target.id };
   const existing = await db.birthday.findUnique({ where: { guildId_discordId: key } });
-  // Keep the "already announced" marker only if the date hasn't changed
+  // Keep the "already posted" markers only if the date hasn't changed
   const unchanged = existing?.day === day && existing?.month === month;
 
   await db.birthday.upsert({
     where: { guildId_discordId: key },
     create: { ...key, day, month },
-    update: { day, month, lastAnnouncedYear: unchanged ? existing?.lastAnnouncedYear : null },
+    update: {
+      day,
+      month,
+      lastAnnouncedYear: unchanged ? existing?.lastAnnouncedYear : null,
+      lastRemindedYear: unchanged ? existing?.lastRemindedYear : null,
+    },
   });
 
   const settings = await db.guildSettings.findUnique({ where: { guildId: interaction.guildId } });
+  const whose = target.self ? 'Your birthday is' : `<@${target.id}>'s birthday is`;
   const embed = new EmbedBuilder()
     .setColor(ACCENT)
     .setTitle('🎂 Birthday saved')
-    .setDescription(`Your birthday is set to **${formatBirthday(day, month)}**.`);
+    .setDescription(`${whose} set to **${formatBirthday(day, month)}**.`);
 
   if (!settings?.birthdayChannelId) {
     embed.setFooter({ text: 'No birthday channel is set for this server yet — ask an admin to run /ic birthday action:channel' });
@@ -117,25 +158,32 @@ async function handleSet(interaction: GuildInteraction): Promise<void> {
     embed.addFields({ name: 'That\'s today!', value: `Expect a message in <#${settings.birthdayChannelId}> shortly 🎉` });
   }
 
-  await interaction.editReply({ embeds: [embed] });
+  await interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
 }
 
 async function handleRemove(interaction: GuildInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
+  const target = await resolveTarget(interaction);
+  if (!target) return;
+
   const { count } = await db.birthday.deleteMany({
-    where: { guildId: interaction.guildId, discordId: interaction.user.id },
+    where: { guildId: interaction.guildId, discordId: target.id },
   });
 
+  const whose = target.self ? 'Your' : `<@${target.id}>'s`;
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setColor(count ? ACCENT : 0x888888)
         .setTitle(count ? 'Birthday removed' : 'No birthday saved')
         .setDescription(
-          count ? 'Your birthday has been removed from this server.' : 'You don\'t have a birthday saved in this server.',
+          count
+            ? `${whose} birthday has been removed from this server.`
+            : `${target.self ? 'You don\'t' : `<@${target.id}> doesn't`} have a birthday saved in this server.`,
         ),
     ],
+    allowedMentions: { parse: [] },
   });
 }
 
@@ -179,11 +227,7 @@ async function handleList(interaction: GuildInteraction): Promise<void> {
 async function handleChannel(interaction: GuildInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
-  const isAdmin =
-    interaction.user.id === config.BOT_OWNER_ID ||
-    interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild);
-
-  if (!isAdmin) {
+  if (!isAdmin(interaction)) {
     await interaction.editReply({
       embeds: [errorEmbed('Permission denied', 'You need the **Manage Server** permission to change the birthday channel.')],
     });
@@ -199,6 +243,8 @@ async function handleChannel(interaction: GuildInteraction): Promise<void> {
     update: { birthdayChannelId },
   });
 
+  const zone = config.BOT_TIMEZONE === 'Europe/London' ? 'UK time' : config.BOT_TIMEZONE;
+  const time = `${formatHour(config.BIRTHDAY_ANNOUNCE_HOUR)} ${zone}`;
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
@@ -206,7 +252,7 @@ async function handleChannel(interaction: GuildInteraction): Promise<void> {
         .setTitle(channel ? 'Birthday channel set' : 'Birthday announcements turned off')
         .setDescription(
           channel
-            ? `Birthday messages will be posted in <#${channel.id}> from ${config.BIRTHDAY_ANNOUNCE_HOUR}:00 (${config.BOT_TIMEZONE}).`
+            ? `Birthday messages will be posted in <#${channel.id}> at ${time} — a reminder one week before, and a happy birthday on the day.`
             : 'No channel given, so birthday announcements are now turned off for this server.',
         ),
     ],

@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { daysUntilBirthday, getZonedDate, isBirthdayOn, isValidBirthday } from '../birthday-utils';
+import {
+  addDays,
+  daysUntilBirthday,
+  formatBirthday,
+  formatHour,
+  formatLongDate,
+  getZonedDate,
+  isBirthdayOn,
+  isValidBirthday,
+  ordinal,
+} from '../birthday-utils';
 
 describe('isValidBirthday', () => {
   it('accepts real dates including 29 Feb', () => {
@@ -38,5 +48,27 @@ describe('getZonedDate', () => {
     // 23:30 UTC on 31 Dec is already 1 Jan in Tokyo
     const d = getZonedDate('Asia/Tokyo', new Date(Date.UTC(2026, 11, 31, 23, 30)));
     expect(d).toEqual({ year: 2027, month: 1, day: 1, hour: 8 });
+  });
+});
+
+describe('English formatting', () => {
+  it('uses ordinals', () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 31].map(ordinal)).toEqual(
+      ['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd', '23rd', '31st'],
+    );
+  });
+  it('formats birthdays and long dates', () => {
+    expect(formatBirthday(14, 3)).toBe('14th March');
+    expect(formatLongDate({ year: 2026, month: 11, day: 18 })).toBe('Wednesday 18th November');
+  });
+  it('formats 12-hour times', () => {
+    expect([0, 9, 12, 18].map(formatHour)).toEqual(['12am', '9am', '12pm', '6pm']);
+  });
+});
+
+describe('addDays', () => {
+  it('rolls over months and years', () => {
+    expect(addDays({ year: 2026, month: 12, day: 28 }, 7)).toEqual({ year: 2027, month: 1, day: 4 });
+    expect(addDays({ year: 2028, month: 2, day: 22 }, 7)).toEqual({ year: 2028, month: 2, day: 29 });
   });
 });

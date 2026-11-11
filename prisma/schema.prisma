@@ -39,6 +39,8 @@ model Birthday {
   month             Int
   // Year the birthday was last announced — prevents duplicate posts
   lastAnnouncedYear Int?
+  // Year of the birthday the one-week reminder was last posted for
+  lastRemindedYear  Int?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

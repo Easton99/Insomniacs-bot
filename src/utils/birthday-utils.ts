@@ -59,6 +59,35 @@ export function daysUntilBirthday(day: number, month: number, today: { year: num
   return Math.round((next - todayUtc) / 86_400_000);
 }
 
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+type CalendarDate = { year: number; month: number; day: number };
+
+/** 1 → "1st", 2 → "2nd", 11 → "11th", 22 → "22nd" */
+export function ordinal(n: number): string {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
+}
+
+/** English format without year, e.g. "14th March" */
 export function formatBirthday(day: number, month: number): string {
-  return `${day} ${MONTH_NAMES[month - 1]}`;
+  return `${ordinal(day)} ${MONTH_NAMES[month - 1]}`;
+}
+
+/** English long format, e.g. "Saturday 14th March" */
+export function formatLongDate(date: CalendarDate): string {
+  const weekday = WEEKDAY_NAMES[new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay()];
+  return `${weekday} ${formatBirthday(date.day, date.month)}`;
+}
+
+/** 12-hour English time for a whole hour, e.g. 9 → "9am", 12 → "12pm", 0 → "12am" */
+export function formatHour(hour: number): string {
+  const suffix = hour < 12 ? 'am' : 'pm';
+  return `${hour % 12 === 0 ? 12 : hour % 12}${suffix}`;
+}
+
+export function addDays(date: CalendarDate, days: number): CalendarDate {
+  const d = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
