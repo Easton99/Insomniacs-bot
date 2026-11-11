@@ -29,6 +29,7 @@ All commands live under `/ic`. Type `/ic` in any channel to get started.
 | `/ic session` | Stats from the most recent play session |
 | `/ic chemistry` | Duo win rates and teammate performance |
 | `/ic achievements` | Earned achievements calculated from match history |
+| `/ic birthday` | Save birthdays — the bot posts a reminder a week before and a message on the day (admins can set others' birthdays and the channel) |
 
 ---
 
