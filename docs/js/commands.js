@@ -1,7 +1,7 @@
 /* Insomniacs Bot — commands reference (list + per-command detail pages)
  * Data lives in commands-data.js. Routing is hash based:
- *   commands.html            → filterable list
- *   commands.html#/birthday  → detail page for /ic birthday
+ *   /commands            → filterable list
+ *   /commands#/birthday  → detail page for /ic birthday
  */
 (function () {
   const COMMANDS   = window.IC_COMMANDS || [];

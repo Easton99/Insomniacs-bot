@@ -16,12 +16,17 @@ if (navToggle && navLinks) {
   });
 }
 
+// ── Clean URLs: /commands.html → /commands, /index.html → / ──
+if (location.protocol.startsWith('http') && location.pathname.endsWith('.html')) {
+  const clean = location.pathname.replace(/(index)?\.html$/, '');
+  history.replaceState(null, '', clean + location.search + location.hash);
+}
+
 // ── Mark active nav link ───────────────────────────────
+const pagePath = location.pathname.replace(/(index)?\.html$/, '').replace(/\/$/, '') || '/';
 document.querySelectorAll('.nav-links a').forEach(link => {
-  if (link.getAttribute('href') === location.pathname.split('/').pop() ||
-      (location.pathname.endsWith('/') && link.getAttribute('href') === 'index.html')) {
-    link.classList.add('active');
-  }
+  const href = (link.getAttribute('href') || '').replace(/\/$/, '') || '/';
+  link.classList.toggle('active', href === pagePath);
 });
 
 // Commands page search/filter lives in commands.js
