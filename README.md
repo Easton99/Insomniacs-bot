@@ -2,7 +2,7 @@
 
 A private Discord bot for the **Insomniacs** Discord server, focused on **Counter-Strike 2 / FACEIT statistics**.
 
-> The bot never posts unsolicited messages. Everything shown in Discord is triggered by a user command or interaction.
+> Commands only reply when someone runs them. The one exception is birthday messages, which are posted only in a channel an admin has chosen with `/ic birthday`.
 
 **Website:** [easton99.github.io/Insomniacs-bot](https://easton99.github.io/Insomniacs-bot)
 
