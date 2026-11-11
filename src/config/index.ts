@@ -11,6 +11,7 @@ const configSchema = z.object({
   FACEIT_API_KEY: z.string().optional(),
   DATABASE_URL: z.string().default('file:./data.db'),
   BOT_TIMEZONE: z.string().default('Europe/London'),
+  BIRTHDAY_ANNOUNCE_HOUR: z.coerce.number().int().min(0).max(23).default(9),
   CHEMISTRY_MIN_MATCHES: z.coerce.number().int().positive().default(10),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),

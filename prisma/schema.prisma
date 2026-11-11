@@ -29,3 +29,27 @@ model Quote {
   quotedAt         DateTime
   createdAt        DateTime @default(now())
 }
+
+// Birthdays are stored per server: a user's birthday is only announced in
+// servers where they set it themselves.
+model Birthday {
+  guildId           String
+  discordId         String
+  day               Int
+  month             Int
+  // Year the birthday was last announced — prevents duplicate posts
+  lastAnnouncedYear Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@id([guildId, discordId])
+  @@index([guildId, month, day])
+}
+
+// Per-server settings. birthdayChannelId must be set by an admin before
+// any birthday announcements are posted in that server.
+model GuildSettings {
+  guildId           String   @id
+  birthdayChannelId String?
+  updatedAt         DateTime @updatedAt
+}

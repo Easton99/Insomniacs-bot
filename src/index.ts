@@ -4,6 +4,7 @@ import logger from './utils/logger';
 import { connectDatabase, disconnectDatabase } from './database/client';
 import { loadCommands } from './utils/command-loader';
 import { handleInteraction } from './utils/interaction-handler';
+import { startBirthdayScheduler } from './services/birthdays';
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -22,6 +23,7 @@ async function main(): Promise<void> {
 
   client.once(Events.ClientReady, (readyClient) => {
     logger.info({ tag: readyClient.user.tag }, 'Bot online');
+    startBirthdayScheduler(readyClient);
   });
 
   client.on(Events.GuildCreate, (guild) => {
