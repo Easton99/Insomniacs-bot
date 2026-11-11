@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Commands — Insomniacs Bot</title>
-  <meta name="description" content="Full command reference for Insomniacs Bot." />
+  <meta name="description" content="Browse and search every Insomniacs Bot command, with syntax, examples and parameters." />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
 </head>
@@ -22,249 +22,74 @@
   </div>
 </nav>
 
-<div class="page-header">
-  <div class="wrap">
-    <span class="eyebrow">// reference</span>
-    <h1>Commands</h1>
-    <p>All commands live under <code>/ic</code>. Type <code>/ic</code> in any channel to get started.</p>
-  </div>
-</div>
-
-<section class="section">
+<section class="section cmd-page">
   <div class="wrap">
 
-    <div class="search-bar">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input id="cmd-search" type="text" placeholder="Search commands…" autocomplete="off" />
-    </div>
+    <!-- ── List view ───────────────────────────────────── -->
+    <div id="cmd-list-view">
+      <header class="cmd-header">
+        <span class="eyebrow">// reference</span>
+        <h1>Insomniacs Bot Commands</h1>
+        <p>Browse and search every command. They all live under <code>/ic</code> — type <code>/ic</code> in any channel to get started.</p>
+      </header>
 
-    <!-- Account Management -->
-    <div class="commands-section" id="account">
-      <h2 class="commands-section-title">Account Management</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic link</span>
-            <span class="badge badge-available">✓ Available</span>
+      <div class="cmd-layout">
+        <aside class="cmd-filters" aria-label="Filters">
+          <button type="button" id="facet-popular" class="facet-item facet-popular" aria-pressed="false">
+            <span>★ Popular commands</span>
+          </button>
+
+          <div class="facet-group">
+            <h2 class="facet-title">Categories</h2>
+            <div id="facet-category" class="facet-list"></div>
           </div>
-          <p class="command-desc">Link your Discord account to a FACEIT nickname. The bot verifies it's a CS2 account and stores the stable player ID.</p>
-          <div class="command-usage">/ic link faceit:YourFaceitNickname</div>
+
+          <div class="facet-group">
+            <h2 class="facet-title">Who can use it</h2>
+            <div id="facet-requires" class="facet-list"></div>
+          </div>
+
+          <button type="button" id="cmd-reset" class="cmd-reset">Reset all filters</button>
+        </aside>
+
+        <div class="cmd-results">
+          <div class="search-bar cmd-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input id="cmd-search" type="search" placeholder="Search commands… (press /)" autocomplete="off" aria-label="Search commands" />
+          </div>
+
+          <div class="cmd-toolbar">
+            <span id="cmd-count" class="cmd-count" aria-live="polite"></span>
+            <label class="cmd-sort-label">Sort
+              <select id="cmd-sort" class="cmd-sort">
+                <option value="az">Alphabetical</option>
+                <option value="popular">Popular first</option>
+                <option value="category">By category</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="cmd-list" class="cmd-list"></div>
+
+          <noscript><p class="cmd-empty">Turn on JavaScript to browse the command list.</p></noscript>
         </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic unlink</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Remove your FACEIT account link.</p>
-          <div class="command-usage">/ic unlink</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic linkstatus</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">View a linked FACEIT account with current live ELO and level.</p>
-          <div class="command-usage">/ic linkstatus
-/ic linkstatus user:@Adam</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic adminunlink</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Remove another user's FACEIT account link. Server administrators only.</p>
-          <div class="command-usage">/ic adminunlink user:@Adam</div>
+      </div>
+
+      <div class="callout" style="margin-top:48px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <div>
+          <strong>Pull-based by design</strong>
+          <p>Commands only reply when someone runs them. The one exception is birthday messages, which are only posted in a channel an admin has chosen with <code>/ic birthday</code>.</p>
         </div>
       </div>
     </div>
 
-    <!-- Player Statistics -->
-    <div class="commands-section" id="stats">
-      <h2 class="commands-section-title">Player Statistics</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic stats</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Lifetime stats — ELO, level, K/D, headshot %, win rate, streaks, and recent form.</p>
-          <div class="command-usage">/ic stats
-/ic stats user:@Adam</div>
-        </div>
-        <div class="command-card" id="recent">
-          <div class="command-card-header">
-            <span class="command-name">/ic recent</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Last 10 matches with map, score, W/L, kills, deaths, and K/D.</p>
-          <div class="command-usage">/ic recent
-/ic recent user:@Adam
-/ic recent count:20</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic form</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Aggregated performance summary over recent matches — W/L record, avg K/D, avg HS%, best and worst game, map breakdown.</p>
-          <div class="command-usage">/ic form
-/ic form user:@Adam
-/ic form matches:40</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Group Statistics -->
-    <div class="commands-section" id="leaderboard">
-      <h2 class="commands-section-title">Group Statistics</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic leaderboard</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Insomniacs leaderboard. Use the dropdown to switch between ELO, K/D, win rate, headshots %, matches played, and best win streak.</p>
-          <div class="command-usage">/ic leaderboard</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic compare</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Side-by-side lifetime stats comparison between two linked players.</p>
-          <div class="command-usage">/ic compare player1:@Adam player2:@Dave</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Maps -->
-    <div class="commands-section" id="maps">
-      <h2 class="commands-section-title">Maps</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic maps</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Per-map breakdown — games played, wins, losses, win rate, and K/D. Based on last 50 matches.</p>
-          <div class="command-usage">/ic maps
-/ic maps user:@Adam</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic mapstats</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Detailed statistics for a specific map — games, win rate, avg K/D, avg HS%, best game. Based on last 100 matches.</p>
-          <div class="command-usage">/ic mapstats map:Mirage
-/ic mapstats map:Ancient user:@Adam</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Records & History -->
-    <div class="commands-section" id="records">
-      <h2 class="commands-section-title">Records &amp; History</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic records</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Insomniacs all-time record book across all linked players — highest ELO, best K/D, best win rate, longest streak, most matches, best kill game.</p>
-          <div class="command-usage">/ic records</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic session</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Stats from the most recent play session — games, W/L, K/D, HS%, best game, maps played, and ELO change where available.</p>
-          <div class="command-usage">/ic session
-/ic session user:@Adam</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Chemistry -->
-    <div class="commands-section" id="chemistry">
-      <h2 class="commands-section-title">Chemistry</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic chemistry</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Duo win rates with other linked players over the last 100 matches. Shows best duo, worst duo, most-played-with, and a full teammate table. Duos under 10 shared games are marked as small sample.</p>
-          <div class="command-usage">/ic chemistry
-/ic chemistry user:@Adam</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Achievements -->
-    <div class="commands-section" id="achievements">
-      <h2 class="commands-section-title">Achievements</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic achievements</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Earned achievements calculated silently from match history — never announced. Includes <em>Thirty Bomb, The Hard Carry, On Fire, Tilt Queue, Go To Bed, The Insomniac, Unstoppable, Ace,</em> and more.</p>
-          <div class="command-usage">/ic achievements
-/ic achievements user:@Adam</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- General -->
-    <div class="commands-section" id="general">
-      <h2 class="commands-section-title">General</h2>
-      <div class="command-grid">
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic poll</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Create a poll with up to 5 options. The bot adds emoji reactions for voting. Only the creator can end the poll early; clicking End Poll shows the final vote counts.</p>
-          <div class="command-usage">/ic poll question:Best map? option1:Mirage option2:Inferno
-/ic poll question:When? option1:Tonight option2:Tomorrow duration:48</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic birthday</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Save your birthday and the bot posts in the server's birthday channel at 9am UK time — a reminder one week before, and a happy birthday on the day. List shows upcoming birthdays. Admins (Manage Server) can set or remove birthdays for other people with the <code>user</code> option, and must set the channel first; leaving the channel empty turns announcements off.</p>
-          <div class="command-usage">/ic birthday action:set day:14 month:March
-/ic birthday action:set day:2 month:July user:@friend
-/ic birthday action:list
-/ic birthday action:remove
-/ic birthday action:channel channel:#general</div>
-        </div>
-        <div class="command-card">
-          <div class="command-card-header">
-            <span class="command-name">/ic ping</span>
-            <span class="badge badge-available">✓ Available</span>
-          </div>
-          <p class="command-desc">Check bot status and latency. Shows round-trip and WebSocket ping.</p>
-          <div class="command-usage">/ic ping</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="callout success" style="margin-top:40px;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      <div>
-        <strong>Pull-based only</strong>
-        <p>None of these commands post automatically. Every response requires a user to actively ask for it.</p>
-      </div>
-    </div>
+    <!-- ── Detail view (rendered from commands-data.js) ── -->
+    <article id="cmd-detail-view" class="cmd-detail" hidden></article>
 
   </div>
 </section>
@@ -280,5 +105,7 @@
 </footer>
 
 <script src="js/main.js"></script>
+<script src="js/commands-data.js"></script>
+<script src="js/commands.js"></script>
 </body>
 </html>

@@ -24,28 +24,7 @@ document.querySelectorAll('.nav-links a').forEach(link => {
   }
 });
 
-// ── Command search/filter (commands page only) ─────────
-const searchInput = document.getElementById('cmd-search');
-
-if (searchInput) {
-  const sections  = document.querySelectorAll('.commands-section');
-  const allCards  = document.querySelectorAll('.command-card');
-
-  searchInput.addEventListener('input', () => {
-    const q = searchInput.value.toLowerCase().trim();
-
-    allCards.forEach(card => {
-      const text = card.textContent.toLowerCase();
-      card.classList.toggle('hidden', q.length > 0 && !text.includes(q));
-    });
-
-    // Hide section headings when all their cards are hidden
-    sections.forEach(section => {
-      const visible = section.querySelectorAll('.command-card:not(.hidden)');
-      section.classList.toggle('hidden', q.length > 0 && visible.length === 0);
-    });
-  });
-}
+// Commands page search/filter lives in commands.js
 
 // ── Copy code blocks ────────────────────────────────────
 document.querySelectorAll('pre').forEach(block => {
