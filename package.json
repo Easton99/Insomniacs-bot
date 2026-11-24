@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "commands:register": "tsx src/scripts/register-commands.ts",
+    "docs:pages": "node scripts/build-command-pages.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio"
