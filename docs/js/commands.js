@@ -12,12 +12,18 @@
   const catOrder = Object.fromEntries(CATEGORIES.map((c, i) => [c.id, i]));
   const byName   = Object.fromEntries(COMMANDS.map((c) => [c.name, c]));
 
-  // Old anchors (homepage cards, external links) → category filter
-  const LEGACY_HASH = {
-    account: 'account', stats: 'stats', recent: 'stats', leaderboard: 'group',
-    records: 'group', chemistry: 'group', maps: 'maps', achievements: 'achievements',
-    general: 'utilities',
+  // Category links: /commands#movies, /commands#account … Every category id works,
+  // plus friendly aliases and old anchors from earlier versions of the page.
+  const CATEGORY_ALIASES = {
+    movie: 'movies', 'movie-night': 'movies', movienight: 'movies',
+    'player-stats': 'stats', 'group-stats': 'group', utility: 'utilities',
+    recent: 'stats', leaderboard: 'group', records: 'group', chemistry: 'group', general: 'utilities',
   };
+  function categoryFromHash(hash) {
+    const key = hash.toLowerCase();
+    if (catLabel[key]) return key;
+    return CATEGORY_ALIASES[key] || null;
+  }
 
   const state = { q: '', cat: 'all', req: 'all', popular: false, sort: 'az' };
 
@@ -31,7 +37,18 @@
   const reqFacet   = document.getElementById('facet-requires');
   const popularEl  = document.getElementById('facet-popular');
   const resetEl    = document.getElementById('cmd-reset');
+  const shareEl    = document.getElementById('cmd-share');
   const baseTitle  = document.title;
+
+  /** Keeps the address bar in step with the chosen category so it can be copied and shared. */
+  function syncUrl() {
+    const want = state.cat === 'all' ? '' : `#${state.cat}`;
+    if (location.hash !== want) history.replaceState(null, '', location.pathname + location.search + want);
+    if (shareEl) {
+      shareEl.hidden = state.cat === 'all';
+      shareEl.textContent = `🔗 Copy link to ${catLabel[state.cat] || 'this list'}`;
+    }
+  }
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
@@ -111,6 +128,7 @@
 
   function renderList() {
     syncFacetState();
+    syncUrl();
     const results = sorted(COMMANDS.filter(matches));
     countEl.textContent = `${results.length} command${results.length === 1 ? '' : 's'}`;
 
@@ -187,7 +205,7 @@
     detailView.innerHTML = `
       <nav class="breadcrumb" aria-label="Breadcrumb">
         <a href="#">Commands</a><span aria-hidden="true">/</span>
-        <a href="#" data-cat="${c.category}">${esc(catLabel[c.category])}</a><span aria-hidden="true">/</span>
+        <a href="#${c.category}">${esc(catLabel[c.category])}</a><span aria-hidden="true">/</span>
         <span>/ic ${esc(c.name)}</span>
       </nav>
 
@@ -226,9 +244,6 @@
       </nav>`;
 
     detailView.querySelectorAll('pre').forEach(addCopyButton);
-    detailView.querySelectorAll('[data-cat]').forEach((a) => a.addEventListener('click', () => {
-      Object.assign(state, { q: '', req: 'all', popular: false, cat: a.dataset.cat });
-    }));
 
     document.title = `/ic ${c.name} — Commands — Insomniacs Bot`;
 
@@ -270,7 +285,9 @@
       return;
     }
 
-    if (LEGACY_HASH[hash]) state.cat = LEGACY_HASH[hash];
+    // A category link shows that whole category, clearing other filters
+    const linkedCat = categoryFromHash(hash);
+    if (linkedCat) Object.assign(state, { q: '', req: 'all', popular: false, cat: linkedCat });
 
     const fromDetail = !detailView.hidden;
     detailView.hidden = true;
@@ -288,6 +305,18 @@
     Object.assign(state, { q: '', cat: 'all', req: 'all', popular: false, sort: 'az' });
     renderList();
   });
+  if (shareEl) {
+    shareEl.addEventListener('click', async () => {
+      const label = shareEl.textContent;
+      try {
+        await navigator.clipboard.writeText(location.href);
+        shareEl.textContent = '✓ Link copied';
+      } catch {
+        shareEl.textContent = location.href;
+      }
+      setTimeout(() => { shareEl.textContent = label; }, 1800);
+    });
+  }
   document.addEventListener('keydown', (e) => {
     if (e.key === '/' && !listView.hidden && document.activeElement !== searchEl) {
       e.preventDefault();

@@ -701,3 +701,17 @@ footer a:hover { color: var(--orange); opacity: 1; text-decoration: none; }
 
 /* Data attribution line in the footer */
 .footer-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* Shareable category link on the commands page */
+.cmd-count-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cmd-share {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--orange);
+  font: 12px 'Space Mono', monospace;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.cmd-share:hover { border-color: var(--orange); }
+.cmd-share:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
