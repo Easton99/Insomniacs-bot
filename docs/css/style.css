@@ -612,6 +612,7 @@ footer a:hover { color: var(--orange); opacity: 1; text-decoration: none; }
 }
 .cmd-tag-link   { color: #A78BFA;       border-color: rgba(124, 58, 237, 0.4);  background: rgba(124, 58, 237, 0.1); }
 .cmd-tag-admin  { color: var(--yellow); border-color: rgba(255, 210, 63, 0.3);  background: rgba(255, 210, 63, 0.06); }
+.cmd-tag-adminonly { color: var(--orange); border-color: rgba(255, 107, 53, 0.35); background: rgba(255, 107, 53, 0.08); }
 .cmd-tag-owner  { color: #F87171;       border-color: rgba(248, 113, 113, 0.3); background: rgba(248, 113, 113, 0.06); }
 .cmd-tag-anyone { color: var(--green);  border-color: rgba(16, 185, 129, 0.3);  background: rgba(16, 185, 129, 0.06); }
 

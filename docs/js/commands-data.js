@@ -12,6 +12,7 @@ window.IC_CATEGORIES = [
   { id: 'group',        label: 'Group Stats' },
   { id: 'maps',         label: 'Maps' },
   { id: 'achievements', label: 'Achievements' },
+  { id: 'movies',       label: 'Movie Night' },
   { id: 'utilities',    label: 'Utilities' },
 ];
 
@@ -19,6 +20,7 @@ window.IC_REQUIRES = {
   anyone: 'Anyone',
   link:   'Needs FACEIT link',
   admin:  'Admin options',
+  adminonly: 'Admins only',
   owner:  'Bot owner only',
 };
 
@@ -246,6 +248,87 @@ window.IC_COMMANDS = [
     ],
     output: 'A list of earned achievements, each with the stat that earned it.',
     related: ['records'],
+  },
+
+  // ── Movie night ───────────────────────────────────────
+  {
+    name: 'movie add', category: 'movies', requires: 'anyone', visibility: 'everyone', popular: true,
+    synopsis: 'Add a movie to the group watchlist.',
+    description: 'Adds a film to this server\'s shared watchlist. Duplicates are caught even with different capitalisation or punctuation ("The Matrix" and "matrix" count as the same film), and you\'ll be told who added it and when.',
+    params: [
+      { name: 'title', type: 'Text', required: true, values: ['Up to 100 characters'], desc: 'The movie title.' },
+    ],
+    examples: [
+      { title: 'Add a movie', cmd: '/ic movie add title:Dune: Part Two', explain: 'Adds Dune: Part Two to the watchlist.' },
+    ],
+    output: 'A short message in the channel saying who added what, and how many films are left to watch.',
+    related: ['movie list', 'movie random'],
+  },
+  {
+    name: 'movie list', category: 'movies', requires: 'anyone', visibility: 'everyone', popular: true,
+    synopsis: 'Show the watchlist — and tick movies off straight from the message.',
+    description: 'Shows the watchlist 10 at a time. Everything is clickable: pick one or more films from the menu to mark them as watched, change the order with the sort menu, flip between the to-watch and watched lists, page through with the arrows, or hit Random pick. In the watched view, the same menu moves films back onto the watchlist. Anyone in the channel can use the buttons.',
+    params: [
+      { name: 'show', type: 'Choice', required: false, default: 'To watch', values: ['To watch', 'Watched'], desc: 'Which list to show first.' },
+      { name: 'sort', type: 'Choice', required: false, default: 'Newest first', values: ['Newest first', 'Oldest first', 'A–Z'], desc: 'The order to show them in. You can change it from the message too.' },
+    ],
+    examples: [
+      { title: 'Show the watchlist', cmd: '/ic movie list', explain: 'Shows what\'s left to watch, newest first.' },
+      { title: 'Oldest suggestions first', cmd: '/ic movie list sort:Oldest first', explain: 'Shows the films that have been waiting longest.' },
+      { title: 'What have we watched?', cmd: '/ic movie list show:Watched', explain: 'Shows watched films, most recent first.' },
+    ],
+    output: 'A numbered list with who added each film and when, plus menus and buttons to mark as watched, sort, switch lists, page and pick at random.',
+    related: ['movie add', 'movie watched', 'movie random'],
+  },
+  {
+    name: 'movie watched', category: 'movies', requires: 'anyone', visibility: 'everyone',
+    synopsis: 'Mark a movie as watched.',
+    description: 'Ticks a film off the watchlist. Start typing and pick it from the suggestions. You can also do this from the menu in /ic movie list.',
+    params: [
+      { name: 'title', type: 'Text', required: true, desc: 'Start typing to search the to-watch list, then pick from the suggestions.' },
+    ],
+    examples: [
+      { title: 'Tick one off', cmd: '/ic movie watched title:Heat', explain: 'Marks Heat as watched.' },
+    ],
+    output: 'A message in the channel saying who marked it as watched.',
+    related: ['movie list'],
+  },
+  {
+    name: 'movie remove', category: 'movies', requires: 'admin', visibility: 'only-you',
+    synopsis: 'Remove a movie from the list.',
+    description: 'Deletes a film from the list completely, for example a typo or something that slipped in from the import. The person who added it can remove it; anyone with Manage Server can remove any film.',
+    params: [
+      { name: 'title', type: 'Text', required: true, desc: 'Start typing to search the list, then pick from the suggestions.' },
+    ],
+    examples: [
+      { title: 'Remove a film', cmd: '/ic movie remove title:Dune Part 2', explain: 'Deletes that entry from the list.' },
+    ],
+    output: 'A private confirmation.',
+    related: ['movie add'],
+  },
+  {
+    name: 'movie random', category: 'movies', requires: 'anyone', visibility: 'everyone',
+    synopsis: 'Can\'t decide? Pick a random movie from the watchlist.',
+    description: 'Picks a random film from the to-watch list. Not feeling it? Hit Reroll. Watching it? Hit Watched it to tick it off.',
+    params: [],
+    examples: [
+      { title: 'Pick for us', cmd: '/ic movie random', explain: 'Shows a random film from the watchlist with Watched it and Reroll buttons.' },
+    ],
+    output: '"🎲 Tonight\'s pick" with the film, who added it, and Watched it / Reroll buttons.',
+    related: ['movie list'],
+  },
+  {
+    name: 'movie import', category: 'movies', requires: 'adminonly', visibility: 'only-you',
+    synopsis: 'One-time import of movie names already posted in a channel.',
+    description: 'Reads every message in a channel (up to 5,000) and pulls out movie names — one per line, with bullets, numbering, links, emoji and mentions stripped, and chatty lines like questions skipped. Messages with a ✅ reaction are imported as already watched. You get a preview with the full list as a text file before anything is saved, and duplicates and films already on the list are skipped, so it\'s safe to run again. Needs Manage Server, and the bot needs Message Content Intent turned on in the Discord Developer Portal plus Read Message History in that channel.',
+    params: [
+      { name: 'channel', type: 'Channel', required: true, desc: 'The channel people have been posting movie names in.' },
+    ],
+    examples: [
+      { title: 'Import the movies channel', cmd: '/ic movie import channel:#movies', explain: 'Scans #movies and shows a preview with Import and Cancel buttons.' },
+    ],
+    output: 'A private preview (counts, first 10 titles and a .txt of everything found) with Import and Cancel buttons. Only the person who ran it can confirm, within 15 minutes.',
+    related: ['movie list', 'movie remove'],
   },
 
   // ── Utilities ─────────────────────────────────────────

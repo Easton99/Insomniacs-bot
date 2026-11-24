@@ -55,3 +55,22 @@ model GuildSettings {
   birthdayChannelId String?
   updatedAt         DateTime @updatedAt
 }
+
+// Per-server movie watchlist (/ic movie). `normalized` is used to stop the
+// same film being added twice with different capitalisation/punctuation.
+model Movie {
+  id              Int       @id @default(autoincrement())
+  guildId         String
+  title           String
+  normalized      String
+  addedById       String
+  addedAt         DateTime  @default(now())
+  watched         Boolean   @default(false)
+  watchedAt       DateTime?
+  watchedById     String?
+  // Set when imported from an existing channel message
+  sourceMessageId String?
+
+  @@unique([guildId, normalized])
+  @@index([guildId, watched])
+}

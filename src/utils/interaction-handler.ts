@@ -1,19 +1,32 @@
 import { Collection, Interaction } from 'discord.js';
-import { SubCommand, StandaloneCommand } from '../types';
+import { IcCommand, StandaloneCommand } from '../types';
 import { FaceitRateLimitError } from '../services/faceit';
 import { POLL_END_PREFIX, handlePollEnd } from '../commands/poll';
+import { MOVIE_PREFIX, handleMovieComponent } from '../commands/movie';
 import logger from './logger';
 
 export const LEADERBOARD_SELECT_ID = 'leaderboard_category';
 
 export async function handleInteraction(
   interaction: Interaction,
-  commands: Collection<string, SubCommand>,
+  commands: Collection<string, IcCommand>,
   standaloneCommands: Collection<string, StandaloneCommand>,
 ): Promise<void> {
-  if (interaction.isChatInputCommand() && interaction.commandName === 'ic') {
-    const subcommandName = interaction.options.getSubcommand();
-    const command = commands.get(subcommandName);
+  if (interaction.isAutocomplete() && interaction.commandName === 'ic') {
+    const name = interaction.options.getSubcommandGroup(false) ?? interaction.options.getSubcommand(false);
+    const command = name ? commands.get(name) : undefined;
+    try {
+      if (command?.autocomplete) await command.autocomplete(interaction);
+      else await interaction.respond([]);
+    } catch (err) {
+      logger.error({ err, command: name }, 'Autocomplete failed');
+    }
+  } else if (interaction.isChatInputCommand() && interaction.commandName === 'ic') {
+    const group = interaction.options.getSubcommandGroup(false);
+    const subcommandName = group
+      ? `${group} ${interaction.options.getSubcommand()}`
+      : interaction.options.getSubcommand();
+    const command = commands.get(group ?? subcommandName);
 
     if (!command) {
       logger.warn({ subcommand: subcommandName }, 'Received unknown subcommand');
@@ -60,6 +73,13 @@ export async function handleInteraction(
       await handlePollEnd(interaction);
     } catch (error) {
       logger.error({ error }, 'Poll end button handler failed');
+      await replyWithError(interaction);
+    }
+  } else if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith(MOVIE_PREFIX)) {
+    try {
+      await handleMovieComponent(interaction);
+    } catch (error) {
+      logger.error({ error, customId: interaction.customId }, 'Movie component handler failed');
       await replyWithError(interaction);
     }
   } else if (interaction.isStringSelectMenu() && interaction.customId === LEADERBOARD_SELECT_ID) {

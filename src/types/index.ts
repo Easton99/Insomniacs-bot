@@ -1,4 +1,6 @@
 import {
+  AutocompleteInteraction,
+  SlashCommandSubcommandGroupBuilder,
   SlashCommandSubcommandBuilder,
   SlashCommandBuilder,
   ContextMenuCommandBuilder,
@@ -10,6 +12,20 @@ import {
 export interface SubCommand {
   subcommand: SlashCommandSubcommandBuilder;
   execute(interaction: ChatInputCommandInteraction): Promise<void>;
+  autocomplete?(interaction: AutocompleteInteraction): Promise<void>;
+}
+
+/** A group of subcommands under /ic, e.g. /ic movie add, /ic movie list. */
+export interface SubCommandGroup {
+  group: SlashCommandSubcommandGroupBuilder;
+  execute(interaction: ChatInputCommandInteraction): Promise<void>;
+  autocomplete?(interaction: AutocompleteInteraction): Promise<void>;
+}
+
+export type IcCommand = SubCommand | SubCommandGroup;
+
+export function isSubCommandGroup(cmd: IcCommand): cmd is SubCommandGroup {
+  return 'group' in cmd;
 }
 
 export interface StandaloneCommand {
