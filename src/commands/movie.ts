@@ -7,13 +7,19 @@ import {
   ButtonStyle,
   ChannelType,
   ChatInputCommandInteraction,
+  Client,
   Collection,
   EmbedBuilder,
   Message,
+  ModalBuilder,
+  ModalSubmitInteraction,
   PermissionFlagsBits,
+  RESTJSONErrorCodes,
   SlashCommandSubcommandGroupBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
+  TextInputBuilder,
+  TextInputStyle,
   escapeMarkdown,
 } from 'discord.js';
 import { randomBytes } from 'node:crypto';
@@ -30,10 +36,14 @@ import {
   parseMovieLines,
 } from '../utils/movie-utils';
 import {
+  MovieInfo,
   TmdbMovie,
+  backdropUrl,
   getMovieDetails,
+  getMovieInfo,
   getRatings,
   imdbUrl,
+  tmdbUrl,
   isOmdbConfigured,
   isTmdbConfigured,
   posterUrl,
@@ -116,6 +126,30 @@ export const group = new SlashCommandSubcommandGroupBuilder()
       ),
   )
   .addSubcommand((s) => s.setName('random').setDescription('Pick a random movie to watch'))
+  .addSubcommand((s) =>
+    s
+      .setName('info')
+      .setDescription('Look up a film — plot, cast, ratings, trailer — and add it if you like')
+      .addStringOption((o) =>
+        o
+          .setName('title')
+          .setDescription('Start typing and pick the film from the suggestions')
+          .setRequired(true)
+          .setMaxLength(MAX_TITLE_LENGTH)
+          .setAutocomplete(true),
+      ),
+  )
+  .addSubcommand((s) =>
+    s
+      .setName('board')
+      .setDescription('(Admin) Post a pinned watchlist that updates itself — leave channel empty to remove it')
+      .addChannelOption((o) =>
+        o
+          .setName('channel')
+          .setDescription('Where to post the board')
+          .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
+      ),
+  )
   .addSubcommand((s) =>
     s
       .setName('import')
@@ -481,6 +515,7 @@ async function renderRandom(guildId: string, excludeId?: number) {
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(total <= 1),
   );
+  if (movie.tmdbId) row.addComponents(infoButton(movie.tmdbId));
   return { content: '', embeds: [movieEmbed(movie, '🎲 Tonight\'s pick')], components: [row], allowedMentions: { parse: [] as [] } };
 }
 
@@ -496,12 +531,13 @@ function prunePending(): void {
 
 /** Saves the film, then posts a public "added" message and removes the private working reply. */
 async function finishAdd(
-  interaction: GuildChat | StringSelectMenuInteraction,
+  interaction: GuildChat | StringSelectMenuInteraction | ModalSubmitInteraction,
   guildId: string,
   typed: string,
   tmdb: TmdbMovie | null,
 ): Promise<void> {
   const { movie, created, upgraded } = await addMovie(guildId, typed, tmdb, { addedById: interaction.user.id });
+  if (created || upgraded) scheduleBoardRefresh(interaction.client, guildId);
 
   if (!created) {
     const name = `**${escapeMarkdown(withYear(movie.title, movie.year))}**`;
@@ -525,22 +561,32 @@ async function finishAdd(
   const [enriched] = await enrichMovies([movie]);
   const todo = await db.movie.count({ where: { guildId, watched: false } });
   const embed = movieEmbed(enriched, '🎬 Added to the watchlist').setFooter({ text: `${todo} to watch · /ic movie list` });
+  const components = enriched.tmdbId
+    ? [new ActionRowBuilder<ButtonBuilder>().addComponents(infoButton(enriched.tmdbId))]
+    : [];
 
-  await interaction.followUp({ embeds: [embed], allowedMentions: { parse: [] } });
+  await interaction.followUp({ embeds: [embed], components, allowedMentions: { parse: [] } });
   await interaction.deleteReply().catch(() => undefined);
+}
+
+function infoButton(tmdbId: number): ButtonBuilder {
+  return new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}info:${tmdbId}`).setLabel('ℹ️ Info & trailer').setStyle(ButtonStyle.Secondary);
 }
 
 async function handleAdd(interaction: GuildChat): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
-  prunePending();
+  await addFromText(interaction, interaction.guildId, cleanTitle(interaction.options.getString('title', true)));
+}
 
-  const input = cleanTitle(interaction.options.getString('title', true));
+/** Shared by /ic movie add and the board's "Add a movie" box. The interaction must already be deferred (ephemeral). */
+async function addFromText(interaction: GuildChat | ModalSubmitInteraction, guildId: string, input: string): Promise<void> {
+  prunePending();
 
   // Picked from the autocomplete suggestions
   const tmdbMatch = /^tmdb:(\d+)$/.exec(input);
   if (tmdbMatch) {
     const details = await getMovieDetails(Number(tmdbMatch[1]));
-    if (details) return finishAdd(interaction, interaction.guildId, details.title, details);
+    if (details) return finishAdd(interaction, guildId, details.title, details);
   }
 
   if (!normalizeTitle(input) || tmdbMatch) {
@@ -548,20 +594,20 @@ async function handleAdd(interaction: GuildChat): Promise<void> {
     return;
   }
 
-  if (!isTmdbConfigured()) return finishAdd(interaction, interaction.guildId, input, null);
+  if (!isTmdbConfigured()) return finishAdd(interaction, guildId, input, null);
   const found = await searchWithFallback(input, 5);
   const results = found.results.slice(0, 10);
 
   // Nothing found: add exactly as typed
-  if (results.length === 0) return finishAdd(interaction, interaction.guildId, input, null);
+  if (results.length === 0) return finishAdd(interaction, guildId, input, null);
 
   // One clear exact match: add it straight away
   const exact = results.filter((r) => normalizeTitle(r.title) === normalizeTitle(input));
-  if (found.kind === 'matched' && found.best && exact.length <= 1) return finishAdd(interaction, interaction.guildId, input, found.best);
+  if (found.kind === 'matched' && found.best && exact.length <= 1) return finishAdd(interaction, guildId, input, found.best);
 
   // Otherwise ask which film they meant
   const token = randomBytes(6).toString('hex');
-  pendingAdds.set(token, { guildId: interaction.guildId, userId: interaction.user.id, title: input, options: results, expires: Date.now() + PENDING_TTL_MS });
+  pendingAdds.set(token, { guildId, userId: interaction.user.id, title: input, options: results, expires: Date.now() + PENDING_TTL_MS });
 
   const menu = new StringSelectMenuBuilder()
     .setCustomId(`${MOVIE_PREFIX}addpick:${token}`)
@@ -825,14 +871,288 @@ async function confirmImport(interaction: ButtonInteraction, token: string, mode
   }
 
   logger.info({ guildId: pending.guildId, added }, 'Imported movies');
+  scheduleBoardRefresh(interaction.client, pending.guildId);
+  void backfillMetadata(interaction.client, pending.guildId);
   await interaction.editReply({
     content: '',
     embeds: [
       new EmbedBuilder()
         .setColor(DONE)
         .setTitle(`✅ Imported ${added} movie(s)`)
-        .setDescription('Use `/ic movie list` to see the watchlist — ratings fill in as you browse it.'),
+        .setDescription('Use `/ic movie list` to see the watchlist. Ratings are being fetched in the background and will appear over the next few minutes.'),
     ],
+  });
+}
+
+// ── Info card ────────────────────────────────────────────
+
+function formatRuntime(minutes: number | null): string | null {
+  if (!minutes) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+/**
+ * Full film card: backdrop, poster, plot, runtime, genres, director, cast, ratings
+ * and links, with an "Add to watchlist" button (or its current watchlist status).
+ * The trailer goes in the message text so Discord shows a playable YouTube preview.
+ */
+async function renderInfo(guildId: string, info: MovieInfo, alternatives: TmdbMovie[] = [], note?: string) {
+  const onList = await db.movie.findFirst({ where: { guildId, tmdbId: info.id } });
+  let imdbRating = onList?.imdbRating ?? null;
+  let metascore = onList?.metascore ?? null;
+  if (!onList && info.imdbId && isOmdbConfigured()) {
+    const ratings = await withTimeout(getRatings(info.imdbId), ENRICH_WAIT_MS, null);
+    imdbRating = ratings?.imdbRating ?? null;
+    metascore = ratings?.metascore ?? null;
+  }
+
+  const facts = [
+    info.year ? String(info.year) : null,
+    formatRuntime(info.runtime),
+    info.genres.slice(0, 3).join(', ') || null,
+  ].filter(Boolean).join(' · ');
+
+  const scores = [imdbRating ? `⭐ **${imdbRating}** IMDb` : null, metascore ? `Ⓜ **${metascore}** Metacritic` : null]
+    .filter(Boolean).join('  ·  ');
+
+  const links = [
+    info.imdbId ? `[IMDb](${imdbUrl(info.imdbId)})` : null,
+    `[Rotten Tomatoes](${rottenTomatoesUrl(info.title)})`,
+    `[TMDB](${tmdbUrl(info.id)})`,
+    info.trailerUrl ? `[▶ Trailer](${info.trailerUrl})` : null,
+  ].filter(Boolean).join(' · ');
+
+  const description = [
+    facts,
+    scores,
+    info.tagline ? `*${escapeMarkdown(info.tagline)}*` : null,
+    info.overview ? truncate(info.overview, 700) : '_No plot summary available._',
+  ].filter(Boolean).join('\n\n');
+
+  const embed = new EmbedBuilder()
+    .setColor(ACCENT)
+    .setTitle(truncate(withYear(info.title, info.year), 256))
+    .setURL(info.imdbId ? imdbUrl(info.imdbId) : tmdbUrl(info.id))
+    .setDescription(truncate(description, 4096))
+    .addFields({ name: 'Links', value: links });
+  if (info.director) embed.addFields({ name: 'Director', value: escapeMarkdown(info.director), inline: true });
+  if (info.cast.length) embed.addFields({ name: 'Starring', value: escapeMarkdown(info.cast.join(', ')), inline: true });
+  const poster = posterUrl(info.posterPath);
+  if (poster) embed.setThumbnail(poster);
+  const backdrop = backdropUrl(info.backdropPath);
+  if (backdrop) embed.setImage(backdrop);
+  embed.setFooter({ text: 'Film data from TMDB · ratings from OMDb' });
+
+  const addBtn = new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}infoadd:${info.id}`);
+  if (onList?.watched) addBtn.setLabel('✅ Already watched').setStyle(ButtonStyle.Secondary).setDisabled(true);
+  else if (onList) addBtn.setLabel('📋 On the watchlist').setStyle(ButtonStyle.Secondary).setDisabled(true);
+  else addBtn.setLabel('➕ Add to watchlist').setStyle(ButtonStyle.Success);
+
+  const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn)];
+  const others = alternatives.filter((a) => a.id !== info.id).slice(0, 10);
+  if (others.length) {
+    rows.push(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`${MOVIE_PREFIX}infopick`)
+          .setPlaceholder('Not the right film? Pick another…')
+          .addOptions(others.map((o) => ({ label: truncate(withYear(o.title, o.year), 100), value: String(o.id) }))),
+      ),
+    );
+  }
+
+  const content = [note, info.trailerUrl ? `▶ **Trailer:** ${info.trailerUrl}` : null].filter(Boolean).join('\n');
+  return { content, embeds: [embed], components: rows, allowedMentions: { parse: [] as [] } };
+}
+
+async function handleInfo(interaction: GuildChat): Promise<void> {
+  if (!isTmdbConfigured()) {
+    await interaction.reply({ embeds: [errorEmbed('Not set up', 'Film lookups need a TMDB API key in the bot settings.')], ephemeral: true });
+    return;
+  }
+  await interaction.deferReply();
+  const input = cleanTitle(interaction.options.getString('title', true));
+
+  let tmdbId: number | null = null;
+  let alternatives: TmdbMovie[] = [];
+  const picked = /^tmdb:(\d+)$/.exec(input);
+  if (picked) {
+    tmdbId = Number(picked[1]);
+  } else {
+    const found = await searchWithFallback(input, 5);
+    tmdbId = found.best?.id ?? found.results[0]?.id ?? null;
+    alternatives = found.results;
+  }
+
+  const info = tmdbId ? await getMovieInfo(tmdbId) : null;
+  if (!info) {
+    await interaction.editReply({ embeds: [errorEmbed('No film found', `Couldn't find a film matching **${escapeMarkdown(input)}**. Check the spelling, or pick from the suggestions as you type.`)] });
+    return;
+  }
+  await interaction.editReply(await renderInfo(interaction.guildId, info, alternatives));
+}
+
+// ── Live pinned board ────────────────────────────────────
+
+const BOARD_BUDGET = 5400; // Discord allows 6000 characters across all embeds in a message
+const BOARD_RECENT = 5;
+
+async function renderBoard(guildId: string) {
+  const [todo, recent, doneCount] = await Promise.all([
+    db.movie.findMany({ where: { guildId, watched: false }, orderBy: [{ addedAt: 'asc' }, { id: 'asc' }] }),
+    db.movie.findMany({ where: { guildId, watched: true }, orderBy: { watchedAt: 'desc' }, take: BOARD_RECENT }),
+    db.movie.count({ where: { guildId, watched: true } }),
+  ]);
+
+  const line = (m: Movie, i: number) => {
+    const name = escapeMarkdown(withYear(m.title, m.year));
+    const linked = m.imdbId ? `[${name}](${imdbUrl(m.imdbId)})` : name;
+    const scores = [m.imdbRating ? `⭐ ${m.imdbRating}` : null, m.metascore ? `Ⓜ ${m.metascore}` : null].filter(Boolean).join(' ');
+    return `\`${String(i + 1).padStart(2, ' ')}.\` ${linked}${scores ? ` · ${scores}` : ''}`;
+  };
+
+  const recentLines = recent.map((m) => `~~${escapeMarkdown(withYear(m.title, m.year))}~~${m.watchedAt ? ` · <t:${unix(m.watchedAt)}:d>` : ''}`);
+  let budget = BOARD_BUDGET - recentLines.join('\n').length - 200;
+
+  // Fill up to 4096 characters per embed, within the overall message budget
+  const chunks: string[][] = [[]];
+  let chunkLen = 0;
+  let shown = 0;
+  for (let i = 0; i < todo.length; i++) {
+    const l = line(todo[i], i);
+    if (l.length + 1 > budget) break;
+    if (chunkLen + l.length + 1 > 4000) {
+      chunks.push([]);
+      chunkLen = 0;
+    }
+    chunks[chunks.length - 1].push(l);
+    chunkLen += l.length + 1;
+    budget -= l.length + 1;
+    shown += 1;
+  }
+
+  const embeds = chunks.map((c) =>
+    new EmbedBuilder()
+      .setColor(ACCENT)
+      .setDescription(c.join('\n') || 'Nothing on the watchlist yet — hit **➕ Add a movie** below.'),
+  );
+  embeds[0].setTitle(`🎬 Movie watchlist — ${todo.length} to watch`);
+  const last = embeds[embeds.length - 1];
+  if (shown < todo.length) last.setDescription(`${last.data.description ?? ''}\n…and **${todo.length - shown} more** — tap 📋 Browse & tick off`);
+  if (recentLines.length) {
+    embeds.push(new EmbedBuilder().setColor(DONE).setTitle(`✅ Recently watched (${doneCount} total)`).setDescription(recentLines.join('\n')));
+  }
+  embeds[embeds.length - 1].setFooter({ text: 'Updates automatically · in the order they were added' }).setTimestamp(new Date());
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}addbox`).setLabel('➕ Add a movie').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}open`).setLabel('📋 Browse & tick off').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}rand`).setLabel('🎲 Random pick').setStyle(ButtonStyle.Secondary).setDisabled(todo.length === 0),
+  );
+
+  return { content: '', embeds: embeds.slice(0, 10), components: [row], allowedMentions: { parse: [] as [] } };
+}
+
+/** Edits the board message in place. Forgets the board if its message has been deleted. */
+async function refreshBoard(client: Client, guildId: string): Promise<void> {
+  const settings = await db.guildSettings.findUnique({ where: { guildId } });
+  if (!settings?.movieBoardChannelId || !settings.movieBoardMessageId) return;
+  try {
+    const channel = await client.channels.fetch(settings.movieBoardChannelId);
+    if (!channel?.isTextBased() || channel.isDMBased()) throw new Error('Board channel is not a server text channel');
+    const message = await channel.messages.fetch(settings.movieBoardMessageId);
+    await message.edit(await renderBoard(guildId));
+  } catch (err) {
+    const code = (err as { code?: number }).code;
+    if (code === RESTJSONErrorCodes.UnknownMessage || code === RESTJSONErrorCodes.UnknownChannel) {
+      logger.info({ guildId }, 'Movie board message is gone — forgetting it');
+      await db.guildSettings.update({ where: { guildId }, data: { movieBoardChannelId: null, movieBoardMessageId: null } });
+    } else {
+      logger.warn({ err, guildId }, 'Failed to refresh movie board');
+    }
+  }
+}
+
+const boardTimers = new Map<string, NodeJS.Timeout>();
+
+/** Coalesces bursts of changes (e.g. an import) into a single board edit. */
+function scheduleBoardRefresh(client: Client, guildId: string, delayMs = 1500): void {
+  clearTimeout(boardTimers.get(guildId));
+  boardTimers.set(
+    guildId,
+    setTimeout(() => {
+      boardTimers.delete(guildId);
+      void refreshBoard(client, guildId);
+    }, delayMs),
+  );
+}
+
+/** After an import, quietly fetch IMDb ids and ratings for new films, then update the board. */
+async function backfillMetadata(client: Client, guildId: string): Promise<void> {
+  const movies = await db.movie.findMany({ where: { guildId, tmdbId: { not: null }, OR: [{ imdbId: null }, { ratingsUpdatedAt: null }] } });
+  for (const [i, m] of movies.entries()) {
+    await enrichMovie(m).catch(() => m);
+    await new Promise((r) => setTimeout(r, 300)); // gentle on the free OMDb limit
+    if ((i + 1) % 25 === 0) scheduleBoardRefresh(client, guildId);
+  }
+  if (movies.length) scheduleBoardRefresh(client, guildId);
+}
+
+async function handleBoard(interaction: GuildChat): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
+  if (!isAdmin(interaction)) {
+    await interaction.editReply({ embeds: [errorEmbed('Permission denied', 'You need the **Manage Server** permission to set up the movie board.')] });
+    return;
+  }
+
+  const existing = await db.guildSettings.findUnique({ where: { guildId: interaction.guildId } });
+  // Remove any previous board
+  if (existing?.movieBoardChannelId && existing.movieBoardMessageId) {
+    const old = await interaction.client.channels.fetch(existing.movieBoardChannelId).catch(() => null);
+    if (old?.isTextBased() && !old.isDMBased()) {
+      await old.messages.delete(existing.movieBoardMessageId).catch(() => undefined);
+    }
+  }
+
+  const option = interaction.options.getChannel('channel');
+  if (!option) {
+    await db.guildSettings.upsert({
+      where: { guildId: interaction.guildId },
+      create: { guildId: interaction.guildId },
+      update: { movieBoardChannelId: null, movieBoardMessageId: null },
+    });
+    await interaction.editReply({ content: 'Movie board removed.' });
+    return;
+  }
+
+  const channel = await interaction.client.channels.fetch(option.id).catch(() => null);
+  if (!channel?.isTextBased() || channel.isDMBased() || !('send' in channel)) {
+    await interaction.editReply({ embeds: [errorEmbed('Can\'t post there', 'Pick a text channel in this server.')] });
+    return;
+  }
+
+  let message: Message;
+  try {
+    message = await channel.send(await renderBoard(interaction.guildId));
+  } catch {
+    await interaction.editReply({ embeds: [errorEmbed('Can\'t post there', `I need **Send Messages** and **Embed Links** in <#${channel.id}>.`)] });
+    return;
+  }
+
+  const pinned = await message.pin().then(() => true).catch(() => false);
+  await db.guildSettings.upsert({
+    where: { guildId: interaction.guildId },
+    create: { guildId: interaction.guildId, movieBoardChannelId: channel.id, movieBoardMessageId: message.id },
+    update: { movieBoardChannelId: channel.id, movieBoardMessageId: message.id },
+  });
+  void backfillMetadata(interaction.client, interaction.guildId);
+
+  await interaction.editReply({
+    content: pinned
+      ? `✅ Movie board posted and pinned in <#${channel.id}>. It updates itself whenever the watchlist changes.`
+      : `✅ Movie board posted in <#${channel.id}>, but I couldn't pin it — give me **Manage Messages** (or **Pin Messages**) there, or pin it yourself. It updates itself whenever the watchlist changes.`,
   });
 }
 
@@ -845,6 +1165,7 @@ async function handleWatched(interaction: GuildChat): Promise<void> {
     return;
   }
   await db.movie.update({ where: { id: movie.id }, data: { watched: true, watchedAt: new Date(), watchedById: interaction.user.id } });
+  scheduleBoardRefresh(interaction.client, interaction.guildId);
   await interaction.reply({
     embeds: [new EmbedBuilder().setColor(DONE).setDescription(`✅ **${escapeMarkdown(withYear(movie.title, movie.year))}** marked as watched by <@${interaction.user.id}>`)],
     allowedMentions: { parse: [] },
@@ -865,6 +1186,7 @@ async function handleRemove(interaction: GuildChat): Promise<void> {
     return;
   }
   await db.movie.delete({ where: { id: movie.id } });
+  scheduleBoardRefresh(interaction.client, interaction.guildId);
   await interaction.reply({ content: `🗑️ Removed **${escapeMarkdown(withYear(movie.title, movie.year))}** from the list.`, ephemeral: true });
 }
 
@@ -893,7 +1215,19 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return;
     case 'import':
       return handleImport(interaction);
+    case 'info':
+      return handleInfo(interaction);
+    case 'board':
+      return handleBoard(interaction);
   }
+}
+
+/** The board's "Add a movie" box. */
+export async function handleMovieModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guildId) return;
+  await interaction.deferReply({ ephemeral: true });
+  const title = cleanTitle(interaction.fields.getTextInputValue('title'));
+  await addFromText(interaction, interaction.guildId, title);
 }
 
 export async function autocomplete(interaction: AutocompleteInteraction): Promise<void> {
@@ -901,7 +1235,7 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
   const typed = String(interaction.options.getFocused()).trim();
   const sub = interaction.options.getSubcommand(false);
 
-  if (sub === 'add') {
+  if (sub === 'add' || sub === 'info') {
     if (!isTmdbConfigured() || typed.length < 2) return interaction.respond([]);
     let results = await searchMovies(typed, 8, 1400).catch(() => [] as TmdbMovie[]);
     // Typo? Try the longest word instead ("harrpy potter" → "potter")
@@ -909,7 +1243,7 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
     if (results.length === 0 && retry) results = await searchMovies(retry, 8, 1200).catch(() => [] as TmdbMovie[]);
     return interaction.respond([
       ...results.map((r) => ({ name: truncate(withYear(r.title, r.year), 100), value: `tmdb:${r.id}` })),
-      { name: truncate(`➕ "${typed}" (as typed)`, 100), value: truncate(typed, 100) },
+      ...(sub === 'add' ? [{ name: truncate(`➕ "${typed}" (as typed)`, 100), value: truncate(typed, 100) }] : []),
     ]);
   }
 
@@ -961,6 +1295,7 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
           ? { watched: true, watchedAt: new Date(), watchedById: interaction.user.id }
           : { watched: false, watchedAt: null, watchedById: null },
       });
+      if (movies.length) scheduleBoardRefresh(interaction.client, guildId);
       const names = movies.map((m) => `**${escapeMarkdown(m.title)}**`).join(', ');
       const note = movies.length
         ? `${markWatched ? '✅' : '↩️'} <@${interaction.user.id}> ${markWatched ? 'marked' : 'moved back'} ${truncate(names, 1500)}${markWatched ? ' as watched' : ' to the watchlist'}`
@@ -983,6 +1318,7 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
       const movie = await db.movie.findFirst({ where: { guildId, id: Number(parts[0]) } });
       if (movie && !movie.watched) {
         await db.movie.update({ where: { id: movie.id }, data: { watched: true, watchedAt: new Date(), watchedById: interaction.user.id } });
+        scheduleBoardRefresh(interaction.client, guildId);
       }
       await interaction.update({
         embeds: [
@@ -1002,6 +1338,69 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
 
     case 'addpick':
       if (interaction.isStringSelectMenu()) await handleAddPick(interaction, parts[0]);
+      return;
+
+    case 'info': {
+      // "Info & trailer" button — shown privately so the channel isn't spammed
+      await interaction.deferReply({ ephemeral: true });
+      const info = await getMovieInfo(Number(parts[0]));
+      await interaction.editReply(info ? await renderInfo(guildId, info) : { content: 'Couldn\'t load that film\'s details right now.' });
+      return;
+    }
+
+    case 'infopick': {
+      if (!interaction.isStringSelectMenu()) return;
+      await interaction.deferUpdate();
+      const info = await getMovieInfo(Number(interaction.values[0]));
+      if (!info) return;
+      const alternatives = interaction.component.options.map((o) => ({
+        id: Number(o.value), title: o.label, originalTitle: o.label, year: null, posterPath: null, popularity: 0, voteCount: 0,
+      }));
+      await interaction.editReply(await renderInfo(guildId, info, alternatives));
+      return;
+    }
+
+    case 'infoadd': {
+      await interaction.deferUpdate();
+      const details = await getMovieDetails(Number(parts[0]));
+      if (!details) {
+        await interaction.followUp({ content: 'Couldn\'t reach the movie database — try again in a moment.', ephemeral: true });
+        return;
+      }
+      const { created, upgraded } = await addMovie(guildId, details.title, details, { addedById: interaction.user.id });
+      if (created || upgraded) scheduleBoardRefresh(interaction.client, guildId);
+      const info = await getMovieInfo(details.id);
+      if (info) {
+        const note = created ? `➕ Added to the watchlist by <@${interaction.user.id}>` : undefined;
+        await interaction.editReply(await renderInfo(guildId, info, [], note));
+      }
+      return;
+    }
+
+    case 'open':
+      // Board's "Browse & tick off": a private, fully interactive copy of the list
+      await interaction.deferReply({ ephemeral: true });
+      await interaction.editReply(await renderList(guildId, { show: 'todo', sort: 'old', page: 0 }));
+      return;
+
+    case 'addbox':
+      if (!interaction.isButton()) return;
+      await interaction.showModal(
+        new ModalBuilder()
+          .setCustomId(`${MOVIE_PREFIX}addbox`)
+          .setTitle('Add a movie')
+          .addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('title')
+                .setLabel('Movie title')
+                .setPlaceholder('e.g. Dune Part Two')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMaxLength(MAX_TITLE_LENGTH),
+            ),
+          ),
+      );
       return;
 
     case 'imp':

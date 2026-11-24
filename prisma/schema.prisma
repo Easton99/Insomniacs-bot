@@ -51,9 +51,12 @@ model Birthday {
 // Per-server settings. birthdayChannelId must be set by an admin before
 // any birthday announcements are posted in that server.
 model GuildSettings {
-  guildId           String   @id
-  birthdayChannelId String?
-  updatedAt         DateTime @updatedAt
+  guildId             String   @id
+  birthdayChannelId   String?
+  // Live, pinned watchlist message kept up to date by the bot (/ic movie board)
+  movieBoardChannelId String?
+  movieBoardMessageId String?
+  updatedAt           DateTime @updatedAt
 }
 
 // Per-server movie watchlist (/ic movie). `normalized` is used to stop the

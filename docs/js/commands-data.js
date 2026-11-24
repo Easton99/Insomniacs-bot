@@ -318,6 +318,33 @@ window.IC_COMMANDS = [
     related: ['movie list'],
   },
   {
+    name: 'movie info', category: 'movies', requires: 'anyone', visibility: 'everyone', popular: true,
+    synopsis: 'Look up any film — plot, cast, ratings, trailer — and add it to the watchlist with one click.',
+    description: 'Search for a film (suggestions appear as you type) and get a full card: a big backdrop image and poster, the plot, year, runtime and genres, director and main cast, IMDb rating and Metacritic score, and links to IMDb, Rotten Tomatoes and TMDB. The trailer is included as a YouTube link that plays right inside Discord. Hit ➕ Add to watchlist to add it, or the button shows if it\'s already on the list or been watched. If the search could mean several films, a menu lets you switch to the right one. The ℹ️ Info & trailer button on added films and random picks opens the same card privately.',
+    params: [
+      { name: 'title', type: 'Text', required: true, values: ['Up to 100 characters'], desc: 'Start typing the film\'s name and pick it from the suggestions.' },
+    ],
+    examples: [
+      { title: 'Look up a film', cmd: '/ic movie info title:Oppenheimer', explain: 'Shows the Oppenheimer card with plot, cast, ratings and trailer, plus an Add to watchlist button.' },
+    ],
+    output: 'A film card in the channel with backdrop, poster, plot, details, ratings and links, the trailer playing underneath, and an Add to watchlist button.',
+    related: ['movie add', 'movie board'],
+  },
+  {
+    name: 'movie board', category: 'movies', requires: 'adminonly', visibility: 'only-you',
+    synopsis: 'A pinned watchlist message that keeps itself up to date.',
+    description: 'Posts the watchlist in a channel and pins it. From then on, the bot edits that same message whenever anyone adds, watches, removes or imports a film, so the pinned message is always current. It never posts new messages. It lists everything still to watch (in the order they were added, with ratings and IMDb links) plus the 5 most recently watched. Buttons on the board let anyone ➕ add a movie (a quick text box), 📋 browse and tick films off privately, or 🎲 get a random pick. Run it again to move the board; leave the channel empty to remove it. Pinning needs Manage Messages (or Pin Messages) for the bot in that channel. Without it, the board is posted but not pinned.',
+    params: [
+      { name: 'channel', type: 'Channel', required: false, desc: 'Where to post the board. Leave empty to remove the board.' },
+    ],
+    examples: [
+      { title: 'Set up the board', cmd: '/ic movie board channel:#movies', explain: 'Posts and pins the live watchlist in #movies.' },
+      { title: 'Remove the board', cmd: '/ic movie board', explain: 'Deletes the board message and stops updating it.' },
+    ],
+    output: 'A private confirmation. The board itself is a message in the chosen channel with the watchlist and Add / Browse / Random buttons.',
+    related: ['movie list', 'movie add'],
+  },
+  {
     name: 'movie import', category: 'movies', requires: 'adminonly', visibility: 'only-you',
     synopsis: 'One-time import of movie names already posted in a channel.',
     description: 'Reads every message in a channel (up to 5,000) and checks each line against the TMDB movie database. Lines that clearly match a film are imported under its official title. Close-but-unsure matches (typos, or a series name like "Harry Potter") are listed as best guesses for you to check. Lines that aren\'t films, like general chat, are skipped. Messages with a ✅ reaction are imported as already watched. Nothing is saved until you\'ve seen the preview, which includes a text file of every line and what it matched, and you choose to import just the matches or the matches plus the guesses. Duplicates and films already on the list are skipped, so it\'s safe to run again. Needs Manage Server, and the bot needs Message Content Intent turned on in the Discord Developer Portal plus Read Message History in that channel.',

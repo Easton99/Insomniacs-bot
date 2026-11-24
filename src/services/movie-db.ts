@@ -105,6 +105,65 @@ export async function getMovieDetails(tmdbId: number): Promise<TmdbDetails | nul
   }
 }
 
+export interface MovieInfo extends TmdbDetails {
+  overview: string | null;
+  tagline: string | null;
+  runtime: number | null; // minutes
+  genres: string[];
+  backdropPath: string | null;
+  director: string | null;
+  cast: string[];
+  trailerUrl: string | null;
+}
+
+interface RawVideo { key: string; site: string; type: string; official?: boolean }
+
+/** Full film details for the info card: plot, runtime, genres, director, cast and a YouTube trailer. */
+export async function getMovieInfo(tmdbId: number): Promise<MovieInfo | null> {
+  if (!isTmdbConfigured()) return null;
+  try {
+    const r = await tmdbGet<RawTmdbMovie & {
+      overview?: string;
+      tagline?: string;
+      runtime?: number;
+      genres?: { name: string }[];
+      backdrop_path?: string | null;
+      videos?: { results?: RawVideo[] };
+      credits?: { cast?: { name: string; order?: number }[]; crew?: { name: string; job: string }[] };
+    }>(`/movie/${tmdbId}`, { language: 'en-GB', append_to_response: 'videos,credits', include_video_language: 'en,null' });
+
+    const videos = (r.videos?.results ?? []).filter((v) => v.site === 'YouTube');
+    const trailer =
+      videos.find((v) => v.type === 'Trailer' && v.official) ??
+      videos.find((v) => v.type === 'Trailer') ??
+      videos.find((v) => v.type === 'Teaser');
+
+    return {
+      ...toMovie(r),
+      imdbId: r.imdb_id || null,
+      overview: r.overview?.trim() || null,
+      tagline: r.tagline?.trim() || null,
+      runtime: r.runtime || null,
+      genres: (r.genres ?? []).map((g) => g.name),
+      backdropPath: r.backdrop_path ?? null,
+      director: r.credits?.crew?.find((c) => c.job === 'Director')?.name ?? null,
+      cast: (r.credits?.cast ?? []).slice(0, 4).map((c) => c.name),
+      trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null,
+    };
+  } catch (err) {
+    logger.warn({ err, tmdbId }, 'TMDB info lookup failed');
+    return null;
+  }
+}
+
+export function tmdbUrl(tmdbId: number): string {
+  return `https://www.themoviedb.org/movie/${tmdbId}`;
+}
+
+export function backdropUrl(path: string | null | undefined): string | null {
+  return path ? `https://image.tmdb.org/t/p/w780${path}` : null;
+}
+
 export async function getRatings(imdbId: string): Promise<Ratings | null> {
   if (!isOmdbConfigured()) return null;
   try {

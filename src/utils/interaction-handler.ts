@@ -2,7 +2,7 @@ import { Collection, Interaction } from 'discord.js';
 import { IcCommand, StandaloneCommand } from '../types';
 import { FaceitRateLimitError } from '../services/faceit';
 import { POLL_END_PREFIX, handlePollEnd } from '../commands/poll';
-import { MOVIE_PREFIX, handleMovieComponent } from '../commands/movie';
+import { MOVIE_PREFIX, handleMovieComponent, handleMovieModal } from '../commands/movie';
 import logger from './logger';
 
 export const LEADERBOARD_SELECT_ID = 'leaderboard_category';
@@ -73,6 +73,13 @@ export async function handleInteraction(
       await handlePollEnd(interaction);
     } catch (error) {
       logger.error({ error }, 'Poll end button handler failed');
+      await replyWithError(interaction);
+    }
+  } else if (interaction.isModalSubmit() && interaction.customId.startsWith(MOVIE_PREFIX)) {
+    try {
+      await handleMovieModal(interaction);
+    } catch (error) {
+      logger.error({ error, customId: interaction.customId }, 'Movie modal handler failed');
       await replyWithError(interaction);
     }
   } else if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith(MOVIE_PREFIX)) {
