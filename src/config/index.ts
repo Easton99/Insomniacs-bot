@@ -9,6 +9,9 @@ const configSchema = z.object({
   DISCORD_GUILD_ID: z.string().optional(),
   BOT_OWNER_ID: z.string().default('157554140569010176'),
   FACEIT_API_KEY: z.string().optional(),
+  // Movie watchlist lookups (optional): TMDB for search/titles, OMDb for IMDb + Metacritic ratings
+  TMDB_API_KEY: z.string().optional(),
+  OMDB_API_KEY: z.string().optional(),
   DATABASE_URL: z.string().default('file:./data.db'),
   BOT_TIMEZONE: z.string().default('Europe/London'),
   BIRTHDAY_ANNOUNCE_HOUR: z.coerce.number().int().min(0).max(23).default(9),

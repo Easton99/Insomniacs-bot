@@ -71,6 +71,17 @@ model Movie {
   // Set when imported from an existing channel message
   sourceMessageId String?
 
+  // Movie database metadata (null when added as free text / no API keys)
+  tmdbId           Int?
+  imdbId           String?
+  year             Int?
+  posterPath       String?
+  imdbRating       String?
+  rtRating         String?
+  metascore        String?
+  ratingsUpdatedAt DateTime?
+
   @@unique([guildId, normalized])
+  @@index([guildId, tmdbId])
   @@index([guildId, watched])
 }

@@ -17,10 +17,29 @@ import {
   escapeMarkdown,
 } from 'discord.js';
 import { randomBytes } from 'node:crypto';
-import { Prisma } from '@prisma/client';
+import { Movie, Prisma } from '@prisma/client';
 import { db } from '../database/client';
 import { config } from '../config';
-import { MAX_TITLE_LENGTH, cleanTitle, normalizeTitle, parseMovieLines } from '../utils/movie-utils';
+import {
+  MAX_TITLE_LENGTH,
+  MatchKind,
+  classifyMatch,
+  cleanTitle,
+  fallbackQueries,
+  normalizeTitle,
+  parseMovieLines,
+} from '../utils/movie-utils';
+import {
+  TmdbMovie,
+  getMovieDetails,
+  getRatings,
+  imdbUrl,
+  isOmdbConfigured,
+  isTmdbConfigured,
+  posterUrl,
+  rottenTomatoesUrl,
+  searchMovies,
+} from '../services/movie-db';
 import logger from '../utils/logger';
 
 export const MOVIE_PREFIX = 'mv:';
@@ -31,7 +50,10 @@ const GREY = 0x888888;
 const ERROR = 0xcc3333;
 const PAGE_SIZE = 10;
 const IMPORT_MAX_MESSAGES = 5000;
-const IMPORT_TTL_MS = 15 * 60 * 1000;
+const IMPORT_CONCURRENCY = 5;
+const PENDING_TTL_MS = 15 * 60 * 1000;
+const RATINGS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const ENRICH_WAIT_MS = 3500;
 const WATCHED_REACTIONS = new Set(['✅', '✔️', '☑️']);
 
 type Show = 'todo' | 'done';
@@ -48,7 +70,12 @@ export const group = new SlashCommandSubcommandGroupBuilder()
       .setName('add')
       .setDescription('Add a movie to the watchlist')
       .addStringOption((o) =>
-        o.setName('title').setDescription('Movie title').setRequired(true).setMaxLength(MAX_TITLE_LENGTH),
+        o
+          .setName('title')
+          .setDescription('Start typing and pick the right film from the suggestions')
+          .setRequired(true)
+          .setMaxLength(MAX_TITLE_LENGTH)
+          .setAutocomplete(true),
       ),
   )
   .addSubcommand((s) =>
@@ -120,6 +147,30 @@ function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
+function withYear(title: string, year: number | null | undefined): string {
+  return year ? `${title} (${year})` : title;
+}
+
+/** Resolves after `ms` with `fallback` if the promise is still pending. */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([promise, new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))]);
+}
+
+/** Runs `fn` over `items` with at most `limit` in flight. */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++;
+        out[i] = await fn(items[i], i);
+      }
+    }),
+  );
+  return out;
+}
+
 /** Resolves an autocomplete value (movie id) or free text to a movie in this guild. */
 async function findMovie(guildId: string, input: string, watched?: boolean) {
   const where: Prisma.MovieWhereInput = { guildId, ...(watched === undefined ? {} : { watched }) };
@@ -127,7 +178,154 @@ async function findMovie(guildId: string, input: string, watched?: boolean) {
     const byId = await db.movie.findFirst({ where: { ...where, id: Number(input) } });
     if (byId) return byId;
   }
-  return db.movie.findFirst({ where: { ...where, normalized: normalizeTitle(input) } });
+  return db.movie.findFirst({
+    where: { ...where, OR: [{ normalized: normalizeTitle(input) }, { normalized: { startsWith: `${normalizeTitle(input)} ` } }] },
+  });
+}
+
+// ── Searching ────────────────────────────────────────────
+
+/**
+ * Searches the movie database for a line of text. If the first search isn't a
+ * confident match, retries with parts of the text to get past typos, then
+ * returns all results (best first) with how confident the match is.
+ */
+async function searchWithFallback(text: string, limit = 5) {
+  const safeSearch = (q: string) => searchMovies(q, limit).catch((err: unknown) => {
+    logger.warn({ err }, 'TMDB search failed');
+    return [] as TmdbMovie[];
+  });
+
+  let results = await safeSearch(text);
+  let match = classifyMatch(text, results);
+  if (match.kind !== 'matched') {
+    const seen = new Set(results.map((r) => r.id));
+    for (const q of fallbackQueries(text)) {
+      for (const r of await safeSearch(q)) {
+        if (!seen.has(r.id)) {
+          seen.add(r.id);
+          results.push(r);
+        }
+      }
+    }
+    match = classifyMatch(text, results);
+  }
+  if (match.best) results = [match.best, ...results.filter((r) => r.id !== match.best?.id)];
+  return { results, ...match };
+}
+
+// ── Adding & metadata ────────────────────────────────────
+
+interface AddOptions {
+  addedById: string;
+  addedAt?: Date;
+  watched?: boolean;
+  sourceMessageId?: string;
+}
+
+/**
+ * Adds a film, avoiding duplicates. With TMDB data the official title + year is
+ * stored, and an existing free-text entry with the same name is upgraded in place.
+ */
+async function addMovie(
+  guildId: string,
+  title: string,
+  tmdb: TmdbMovie | null,
+  opts: AddOptions,
+): Promise<{ movie: Movie; created: boolean; upgraded?: boolean }> {
+  const base = {
+    guildId,
+    addedById: opts.addedById,
+    ...(opts.addedAt ? { addedAt: opts.addedAt } : {}),
+    watched: opts.watched ?? false,
+    watchedAt: opts.watched ? new Date() : null,
+    sourceMessageId: opts.sourceMessageId ?? null,
+  };
+
+  if (tmdb) {
+    const byTmdb = await db.movie.findFirst({ where: { guildId, tmdbId: tmdb.id } });
+    if (byTmdb) return { movie: byTmdb, created: false };
+
+    const plain = normalizeTitle(tmdb.title);
+    const normalized = tmdb.year ? `${plain} ${tmdb.year}` : plain;
+    const meta = { title: tmdb.title, normalized, tmdbId: tmdb.id, year: tmdb.year, posterPath: tmdb.posterPath };
+
+    // Upgrade an earlier free-text entry ("dune") to the real film
+    const freeText = await db.movie.findFirst({ where: { guildId, tmdbId: null, normalized: { in: [plain, normalizeTitle(title)] } } });
+    if (freeText) return { movie: await db.movie.update({ where: { id: freeText.id }, data: meta }), created: false, upgraded: true };
+
+    const clash = await db.movie.findUnique({ where: { guildId_normalized: { guildId, normalized } } });
+    if (clash) return { movie: clash, created: false };
+
+    return { movie: await db.movie.create({ data: { ...base, ...meta } }), created: true };
+  }
+
+  const normalized = normalizeTitle(title);
+  const existing = await db.movie.findFirst({
+    where: { guildId, OR: [{ normalized }, { normalized: { startsWith: `${normalized} ` }, tmdbId: { not: null } }] },
+  });
+  if (existing) return { movie: existing, created: false };
+  return { movie: await db.movie.create({ data: { ...base, title, normalized } }), created: true };
+}
+
+function needsEnrichment(m: Movie): boolean {
+  if (m.tmdbId && !m.imdbId && isTmdbConfigured()) return true;
+  if (m.imdbId && isOmdbConfigured()) {
+    return !m.ratingsUpdatedAt || Date.now() - m.ratingsUpdatedAt.getTime() > RATINGS_TTL_MS;
+  }
+  return false;
+}
+
+/** Fills in IMDb id (via TMDB) and IMDb / Rotten Tomatoes ratings (via OMDb), caching for a week. */
+async function enrichMovie(m: Movie): Promise<Movie> {
+  if (!needsEnrichment(m)) return m;
+  const data: Prisma.MovieUpdateInput = {};
+  let imdbId = m.imdbId;
+
+  if (m.tmdbId && !imdbId) {
+    const details = await getMovieDetails(m.tmdbId);
+    if (details) {
+      imdbId = details.imdbId;
+      Object.assign(data, { imdbId, posterPath: details.posterPath ?? m.posterPath, year: details.year ?? m.year });
+    }
+  }
+  if (imdbId && isOmdbConfigured()) {
+    const ratings = await getRatings(imdbId);
+    // Record the attempt either way so a missing film isn't re-queried on every view
+    Object.assign(data, { ratingsUpdatedAt: new Date(), ...(ratings ?? {}) });
+  }
+  if (Object.keys(data).length === 0) return m;
+  return db.movie.update({ where: { id: m.id }, data }).catch(() => m);
+}
+
+/** Enriches a page of movies, waiting at most ENRICH_WAIT_MS; the rest finish in the background. */
+async function enrichMovies(movies: Movie[]): Promise<Movie[]> {
+  if (!movies.some(needsEnrichment)) return movies;
+  const work = Promise.all(movies.map((m) => enrichMovie(m).catch(() => m)));
+  return withTimeout(work, ENRICH_WAIT_MS, movies);
+}
+
+/** "⭐ 8.5 IMDb · Ⓜ 74 Metacritic · 🍅 92% · IMDb · Rotten Tomatoes" with links; empty for free-text entries. */
+function ratingsLine(m: Movie): string {
+  const parts: string[] = [];
+  if (m.imdbRating) parts.push(`⭐ ${m.imdbRating} IMDb`);
+  if (m.metascore) parts.push(`Ⓜ ${m.metascore} Metacritic`);
+  if (m.rtRating) parts.push(`🍅 ${m.rtRating}`);
+  if (m.imdbId) parts.push(`[IMDb](${imdbUrl(m.imdbId)})`);
+  if (m.tmdbId || m.imdbId) parts.push(`[Rotten Tomatoes](${rottenTomatoesUrl(m.title)})`);
+  return parts.join(' · ');
+}
+
+function movieEmbed(m: Movie, heading: string, color = ACCENT): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: heading })
+    .setTitle(truncate(withYear(m.title, m.year), 256))
+    .setDescription([ratingsLine(m), `Added by <@${m.addedById}> <t:${unix(m.addedAt)}:R>`].filter(Boolean).join('\n'));
+  if (m.imdbId) embed.setURL(imdbUrl(m.imdbId));
+  const poster = posterUrl(m.posterPath);
+  if (poster) embed.setThumbnail(poster);
+  return embed;
 }
 
 // ── Interactive list ─────────────────────────────────────
@@ -164,26 +362,30 @@ async function renderList(guildId: string, state: ListState, note?: string) {
   const orderBy: Prisma.MovieOrderByWithRelationInput =
     s.sort === 'az' ? { normalized: 'asc' } : { [dateField]: s.sort === 'old' ? 'asc' : 'desc' };
 
-  const movies = await db.movie.findMany({
-    where: { guildId, watched },
-    orderBy: [orderBy, { id: 'asc' }],
-    skip: page * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const movies = await enrichMovies(
+    await db.movie.findMany({
+      where: { guildId, watched },
+      orderBy: [orderBy, { id: 'asc' }],
+      skip: page * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  );
 
   const lines = movies.map((m, i) => {
     const n = page * PAGE_SIZE + i + 1;
-    const title = escapeMarkdown(m.title);
-    return watched
-      ? `\`${n}.\` ~~${title}~~ · watched ${m.watchedAt ? `<t:${unix(m.watchedAt)}:d>` : ''}`
-      : `\`${n}.\` **${title}** · <@${m.addedById}> · <t:${unix(m.addedAt)}:R>`;
+    const name = escapeMarkdown(withYear(m.title, m.year));
+    const head = watched
+      ? `\`${n}.\` ~~${name}~~ · watched ${m.watchedAt ? `<t:${unix(m.watchedAt)}:d>` : ''}`
+      : `\`${n}.\` **${name}** · <@${m.addedById}> <t:${unix(m.addedAt)}:R>`;
+    const meta = ratingsLine(m);
+    return meta ? `${head}\n↳ ${meta}` : head;
   });
 
   const embed = new EmbedBuilder()
     .setColor(watched ? DONE : ACCENT)
     .setTitle(watched ? '✅ Watched movies' : '🎬 Movie watchlist')
     .setDescription(
-      lines.join('\n') ||
+      truncate(lines.join('\n'), 4096) ||
         (watched ? 'Nothing watched yet.' : 'The watchlist is empty — add one with `/ic movie add`.'),
     )
     .setFooter({
@@ -202,7 +404,7 @@ async function renderList(guildId: string, state: ListState, note?: string) {
           .setMaxValues(movies.length)
           .addOptions(
             movies.map((m, i) => ({
-              label: truncate(`${page * PAGE_SIZE + i + 1}. ${m.title}`, 100),
+              label: truncate(`${page * PAGE_SIZE + i + 1}. ${withYear(m.title, m.year)}`, 100),
               value: String(m.id),
             })),
           ),
@@ -268,11 +470,8 @@ async function renderRandom(guildId: string, excludeId?: number) {
     };
   }
 
-  const [movie] = await db.movie.findMany({ where: pickWhere, skip: Math.floor(Math.random() * count), take: 1 });
-  const embed = new EmbedBuilder()
-    .setColor(ACCENT)
-    .setTitle('🎲 Tonight\'s pick')
-    .setDescription(`## ${escapeMarkdown(movie.title)}\nAdded by <@${movie.addedById}> <t:${unix(movie.addedAt)}:R>`);
+  const [picked] = await db.movie.findMany({ where: pickWhere, skip: Math.floor(Math.random() * count), take: 1 });
+  const [movie] = await enrichMovies([picked]);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}pick:${movie.id}`).setLabel('✅ Watched it').setStyle(ButtonStyle.Success),
@@ -282,21 +481,139 @@ async function renderRandom(guildId: string, excludeId?: number) {
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(total <= 1),
   );
-  return { content: '', embeds: [embed], components: [row], allowedMentions: { parse: [] as [] } };
+  return { content: '', embeds: [movieEmbed(movie, '🎲 Tonight\'s pick')], components: [row], allowedMentions: { parse: [] as [] } };
+}
+
+// ── Add (with "did you mean" picker) ─────────────────────
+
+const pendingAdds = new Map<string, { guildId: string; userId: string; title: string; options: TmdbMovie[]; expires: number }>();
+
+function prunePending(): void {
+  const now = Date.now();
+  for (const [k, v] of pendingAdds) if (v.expires < now) pendingAdds.delete(k);
+  for (const [k, v] of pendingImports) if (v.expires < now) pendingImports.delete(k);
+}
+
+/** Saves the film, then posts a public "added" message and removes the private working reply. */
+async function finishAdd(
+  interaction: GuildChat | StringSelectMenuInteraction,
+  guildId: string,
+  typed: string,
+  tmdb: TmdbMovie | null,
+): Promise<void> {
+  const { movie, created, upgraded } = await addMovie(guildId, typed, tmdb, { addedById: interaction.user.id });
+
+  if (!created) {
+    const name = `**${escapeMarkdown(withYear(movie.title, movie.year))}**`;
+    const status = movie.watched
+      ? `${name} was already watched${movie.watchedAt ? ` <t:${unix(movie.watchedAt)}:R>` : ''}.`
+      : `${name} was added by <@${movie.addedById}> <t:${unix(movie.addedAt)}:R>.`;
+    await interaction.editReply({
+      content: '',
+      embeds: [
+        new EmbedBuilder()
+          .setColor(GREY)
+          .setTitle('Already on the list')
+          .setDescription(upgraded ? `${status}\nI've updated it to the film's proper title, so it now shows ratings.` : status),
+      ],
+      components: [],
+      allowedMentions: { parse: [] },
+    });
+    return;
+  }
+
+  const [enriched] = await enrichMovies([movie]);
+  const todo = await db.movie.count({ where: { guildId, watched: false } });
+  const embed = movieEmbed(enriched, '🎬 Added to the watchlist').setFooter({ text: `${todo} to watch · /ic movie list` });
+
+  await interaction.followUp({ embeds: [embed], allowedMentions: { parse: [] } });
+  await interaction.deleteReply().catch(() => undefined);
+}
+
+async function handleAdd(interaction: GuildChat): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
+  prunePending();
+
+  const input = cleanTitle(interaction.options.getString('title', true));
+
+  // Picked from the autocomplete suggestions
+  const tmdbMatch = /^tmdb:(\d+)$/.exec(input);
+  if (tmdbMatch) {
+    const details = await getMovieDetails(Number(tmdbMatch[1]));
+    if (details) return finishAdd(interaction, interaction.guildId, details.title, details);
+  }
+
+  if (!normalizeTitle(input) || tmdbMatch) {
+    await interaction.editReply({ embeds: [errorEmbed('Invalid title', 'Give the movie a name with some letters or numbers.')] });
+    return;
+  }
+
+  if (!isTmdbConfigured()) return finishAdd(interaction, interaction.guildId, input, null);
+  const found = await searchWithFallback(input, 5);
+  const results = found.results.slice(0, 10);
+
+  // Nothing found: add exactly as typed
+  if (results.length === 0) return finishAdd(interaction, interaction.guildId, input, null);
+
+  // One clear exact match: add it straight away
+  const exact = results.filter((r) => normalizeTitle(r.title) === normalizeTitle(input));
+  if (found.kind === 'matched' && found.best && exact.length <= 1) return finishAdd(interaction, interaction.guildId, input, found.best);
+
+  // Otherwise ask which film they meant
+  const token = randomBytes(6).toString('hex');
+  pendingAdds.set(token, { guildId: interaction.guildId, userId: interaction.user.id, title: input, options: results, expires: Date.now() + PENDING_TTL_MS });
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`${MOVIE_PREFIX}addpick:${token}`)
+    .setPlaceholder('Pick the right film…')
+    .addOptions([
+      ...results.map((r) => ({
+        label: truncate(withYear(r.title, r.year), 100),
+        ...(r.originalTitle !== r.title ? { description: truncate(r.originalTitle, 100) } : {}),
+        value: `tmdb:${r.id}`,
+      })),
+      { label: truncate(`Add "${input}" exactly as typed`, 100), value: 'raw', emoji: '➕' },
+    ]);
+
+  await interaction.editReply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor(ACCENT)
+        .setTitle('Which film did you mean?')
+        .setDescription(`Results for **${escapeMarkdown(input)}** — pick one so it's saved with its proper name and ratings.`),
+    ],
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
+  });
+}
+
+async function handleAddPick(interaction: StringSelectMenuInteraction, token: string): Promise<void> {
+  const pending = pendingAdds.get(token);
+  if (!pending || pending.expires < Date.now() || pending.userId !== interaction.user.id) {
+    await interaction.update({ content: 'This choice has expired — run `/ic movie add` again.', embeds: [], components: [] });
+    return;
+  }
+  pendingAdds.delete(token);
+  await interaction.deferUpdate();
+
+  const value = interaction.values[0];
+  const tmdb = value.startsWith('tmdb:') ? pending.options.find((o) => o.id === Number(value.slice(5))) ?? null : null;
+  await finishAdd(interaction, pending.guildId, tmdb ? tmdb.title : pending.title, tmdb);
 }
 
 // ── Import ───────────────────────────────────────────────
 
 interface ImportItem {
-  title: string;
-  normalized: string;
+  text: string; // the line as written in the channel
+  title: string; // what will be saved
+  tmdb: TmdbMovie | null;
+  kind: MatchKind;
   addedById: string;
   addedAt: Date;
   watched: boolean;
   sourceMessageId: string;
 }
 
-const pendingImports = new Map<string, { guildId: string; userId: string; items: ImportItem[]; expires: number }>();
+const pendingImports = new Map<string, { guildId: string; userId: string; matched: ImportItem[]; unsure: ImportItem[]; expires: number }>();
 
 async function fetchAllMessages(channel: { messages: { fetch(o: { limit: number; before?: string }): Promise<Collection<string, Message>> } }) {
   const all: Message[] = [];
@@ -313,6 +630,7 @@ async function fetchAllMessages(channel: { messages: { fetch(o: { limit: number;
 
 async function handleImport(interaction: GuildChat): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
+  prunePending();
 
   if (!isAdmin(interaction)) {
     await interaction.editReply({ embeds: [errorEmbed('Permission denied', 'You need the **Manage Server** permission to import movies.')] });
@@ -326,8 +644,7 @@ async function handleImport(interaction: GuildChat): Promise<void> {
     return;
   }
 
-  const me = interaction.client.user;
-  const perms = channel.permissionsFor(me);
+  const perms = channel.permissionsFor(interaction.client.user);
   if (!perms?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory])) {
     await interaction.editReply({
       embeds: [errorEmbed('Missing permissions', `I need **View Channel** and **Read Message History** in <#${channel.id}>.`)],
@@ -335,12 +652,13 @@ async function handleImport(interaction: GuildChat): Promise<void> {
     return;
   }
 
+  await interaction.editReply({ content: `Reading messages in <#${channel.id}>…` });
   const messages = await fetchAllMessages(channel);
   const userMessages = messages.filter((m) => !m.author.bot);
-  const withText = userMessages.filter((m) => m.content.trim().length > 0);
 
-  if (userMessages.length > 0 && withText.length === 0) {
+  if (userMessages.length > 0 && userMessages.every((m) => m.content.trim().length === 0)) {
     await interaction.editReply({
+      content: '',
       embeds: [
         errorEmbed(
           'I can\'t see message text',
@@ -351,50 +669,93 @@ async function handleImport(interaction: GuildChat): Promise<void> {
     return;
   }
 
-  const existing = new Set(
-    (await db.movie.findMany({ where: { guildId: interaction.guildId }, select: { normalized: true } })).map((m) => m.normalized),
-  );
-
   // Oldest first, so the earliest mention of a film wins
   const sorted = [...userMessages].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-  const seen = new Set<string>();
-  const items: ImportItem[] = [];
-  let found = 0;
-  let alreadyListed = 0;
-
+  const seenText = new Set<string>();
+  const candidates: Omit<ImportItem, 'title' | 'tmdb' | 'kind'>[] = [];
   for (const msg of sorted) {
     const watched = msg.reactions.cache.some((r) => r.emoji.name !== null && WATCHED_REACTIONS.has(r.emoji.name));
-    for (const title of parseMovieLines(msg.content)) {
-      found += 1;
-      const normalized = normalizeTitle(title);
-      if (!normalized || seen.has(normalized)) continue;
-      seen.add(normalized);
-      if (existing.has(normalized)) {
-        alreadyListed += 1;
-        continue;
-      }
-      items.push({ title, normalized, addedById: msg.author.id, addedAt: msg.createdAt, watched, sourceMessageId: msg.id });
+    for (const text of parseMovieLines(msg.content)) {
+      const key = normalizeTitle(text);
+      if (!key || seenText.has(key)) continue;
+      seenText.add(key);
+      candidates.push({ text, addedById: msg.author.id, addedAt: msg.createdAt, watched, sourceMessageId: msg.id });
     }
   }
 
-  if (items.length === 0) {
+  // Match each line against the movie database (or take lines as-is without it)
+  const useTmdb = isTmdbConfigured();
+  let done = 0;
+  let lastProgress = Date.now();
+  const items: ImportItem[] = await mapLimit(candidates, IMPORT_CONCURRENCY, async (c) => {
+    if (!useTmdb) return { ...c, title: c.text, tmdb: null, kind: 'matched' as MatchKind };
+    const { kind, best } = await searchWithFallback(c.text, 5);
+    done += 1;
+    if (Date.now() - lastProgress > 4000) {
+      lastProgress = Date.now();
+      await interaction.editReply({ content: `Matching against the movie database… ${done}/${candidates.length}` }).catch(() => undefined);
+    }
+    return { ...c, title: best && kind !== 'none' ? best.title : c.text, tmdb: kind !== 'none' ? best : null, kind };
+  });
+
+  // Skip films already on the list and repeat mentions of the same film
+  const existing = await db.movie.findMany({ where: { guildId: interaction.guildId }, select: { normalized: true, tmdbId: true } });
+  const haveTmdb = new Set(existing.map((m) => m.tmdbId).filter((id): id is number => id !== null));
+  const haveNorm = new Set(existing.map((m) => m.normalized));
+  const seenTmdb = new Set<number>();
+  const matched: ImportItem[] = [];
+  const unsure: ImportItem[] = [];
+  const notFound: ImportItem[] = [];
+  let alreadyListed = 0;
+
+  for (const item of items) {
+    if (item.kind === 'none') {
+      notFound.push(item);
+      continue;
+    }
+    if (item.tmdb) {
+      if (haveTmdb.has(item.tmdb.id)) { alreadyListed += 1; continue; }
+      if (seenTmdb.has(item.tmdb.id)) continue;
+      seenTmdb.add(item.tmdb.id);
+    } else if (haveNorm.has(normalizeTitle(item.title))) {
+      alreadyListed += 1;
+      continue;
+    }
+    (item.kind === 'matched' ? matched : unsure).push(item);
+  }
+
+  if (matched.length === 0 && unsure.length === 0) {
     await interaction.editReply({
+      content: '',
       embeds: [
         new EmbedBuilder()
           .setColor(GREY)
           .setTitle('Nothing new to import')
-          .setDescription(`Scanned ${messages.length} messages in <#${channel.id}> and found ${found} title(s), ${alreadyListed} already on the list.`),
+          .setDescription(`Scanned ${messages.length} messages in <#${channel.id}>. ${alreadyListed} film(s) already on the list, ${notFound.length} line(s) didn't look like films.`),
       ],
     });
     return;
   }
 
   const token = randomBytes(6).toString('hex');
-  pendingImports.set(token, { guildId: interaction.guildId, userId: interaction.user.id, items, expires: Date.now() + IMPORT_TTL_MS });
+  pendingImports.set(token, { guildId: interaction.guildId, userId: interaction.user.id, matched, unsure, expires: Date.now() + PENDING_TTL_MS });
 
-  const watchedCount = items.filter((i) => i.watched).length;
-  const preview = items.map((i) => `${i.watched ? '[watched] ' : ''}${i.title}`).join('\n');
-  const file = new AttachmentBuilder(Buffer.from(preview, 'utf8'), { name: 'movie-import-preview.txt' });
+  const fmt = (i: ImportItem) =>
+    `${i.watched ? '[watched] ' : ''}${i.tmdb ? `${withYear(i.tmdb.title, i.tmdb.year)}` : i.title}${i.tmdb && normalizeTitle(i.text) !== normalizeTitle(i.tmdb.title) ? `   ← "${i.text}"` : ''}`;
+  const report = [
+    `MATCHED — will be imported (${matched.length})`,
+    ...matched.map(fmt),
+    '',
+    `NEEDS A CHECK — best guess, only imported if you choose "matched + guesses" (${unsure.length})`,
+    ...unsure.map(fmt),
+    '',
+    `NOT FILMS / NOT FOUND — skipped (${notFound.length})`,
+    ...notFound.map((i) => i.text),
+  ].join('\n');
+  const file = new AttachmentBuilder(Buffer.from(report, 'utf8'), { name: 'movie-import-preview.txt' });
+
+  const sample = (list: ImportItem[]) =>
+    truncate(list.slice(0, 8).map((i) => `• ${escapeMarkdown(fmt(i))}`).join('\n') || '—', 1024);
 
   const embed = new EmbedBuilder()
     .setColor(ACCENT)
@@ -402,29 +763,34 @@ async function handleImport(interaction: GuildChat): Promise<void> {
     .setDescription(
       [
         `Scanned **${messages.length}** messages in <#${channel.id}>${messages.length >= IMPORT_MAX_MESSAGES ? ' (limit reached)' : ''}.`,
-        `Found **${items.length}** new movie(s) to add${watchedCount ? `, ${watchedCount} marked as watched because the message has a ✅ reaction` : ''}.`,
-        alreadyListed ? `${alreadyListed} already on the list and ${found - items.length - alreadyListed} duplicate mention(s) skipped.` : '',
-        '',
-        '**Check the attached list first** — chat lines can slip in. You can remove any with `/ic movie remove` afterwards.',
+        useTmdb
+          ? `✅ **${matched.length}** matched a film · ❓ **${unsure.length}** best guesses to check · 🚫 **${notFound.length}** skipped as chat/not found`
+          : `Found **${matched.length}** line(s). Movie database not configured, so they'll be saved exactly as written.`,
+        alreadyListed ? `${alreadyListed} already on the list.` : '',
+        'Films with a ✅ reaction in the channel are imported as watched.',
+        '**The attached file lists everything** — check the guesses before including them.',
       ]
-        .filter((l) => l !== undefined)
+        .filter(Boolean)
         .join('\n'),
     )
-    .addFields({
-      name: 'First few',
-      value: truncate(items.slice(0, 10).map((i) => `• ${escapeMarkdown(i.title)}`).join('\n'), 1024),
-    })
+    .addFields({ name: `Matched (${matched.length})`, value: sample(matched) })
     .setFooter({ text: 'This preview expires in 15 minutes' });
+  if (unsure.length) embed.addFields({ name: `Best guesses (${unsure.length})`, value: sample(unsure) });
 
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}imp:${token}:ok`).setLabel(`Import ${items.length}`).setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}imp:${token}:no`).setLabel('Cancel').setStyle(ButtonStyle.Secondary),
-  );
+  const buttons = [
+    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}imp:${token}:m`).setLabel(`Import ${matched.length} matched`).setStyle(ButtonStyle.Success).setDisabled(matched.length === 0),
+  ];
+  if (unsure.length) {
+    buttons.push(
+      new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}imp:${token}:mu`).setLabel(`Import matched + ${unsure.length} guesses`).setStyle(ButtonStyle.Primary),
+    );
+  }
+  buttons.push(new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}imp:${token}:no`).setLabel('Cancel').setStyle(ButtonStyle.Secondary));
 
-  await interaction.editReply({ embeds: [embed], files: [file], components: [row] });
+  await interaction.editReply({ content: '', embeds: [embed], files: [file], components: [new ActionRowBuilder<ButtonBuilder>().addComponents(buttons)] });
 }
 
-async function confirmImport(interaction: ButtonInteraction, token: string, ok: boolean): Promise<void> {
+async function confirmImport(interaction: ButtonInteraction, token: string, mode: string): Promise<void> {
   const pending = pendingImports.get(token);
   if (!pending || pending.expires < Date.now()) {
     pendingImports.delete(token);
@@ -437,95 +803,40 @@ async function confirmImport(interaction: ButtonInteraction, token: string, ok: 
   }
   pendingImports.delete(token);
 
-  if (!ok) {
+  if (mode === 'no') {
     await interaction.update({ content: 'Import cancelled — nothing was added.', embeds: [], components: [], files: [] });
     return;
   }
 
-  // Re-check against the list in case movies were added while the preview was open
-  const existing = new Set(
-    (await db.movie.findMany({ where: { guildId: pending.guildId }, select: { normalized: true } })).map((m) => m.normalized),
-  );
-  const toAdd = pending.items.filter((i) => !existing.has(i.normalized));
-  const now = new Date();
+  await interaction.update({ content: 'Importing…', embeds: [], components: [], files: [] });
+  const toAdd = mode === 'mu' ? [...pending.matched, ...pending.unsure] : pending.matched;
+  let added = 0;
+  for (const item of toAdd) {
+    const { created } = await addMovie(pending.guildId, item.title, item.tmdb, {
+      addedById: item.addedById,
+      addedAt: item.addedAt,
+      watched: item.watched,
+      sourceMessageId: item.sourceMessageId,
+    }).catch((err: unknown) => {
+      logger.warn({ err, title: item.title }, 'Skipped movie during import');
+      return { created: false };
+    });
+    if (created) added += 1;
+  }
 
-  await db.movie.createMany({
-    data: toAdd.map((i) => ({
-      guildId: pending.guildId,
-      title: i.title,
-      normalized: i.normalized,
-      addedById: i.addedById,
-      addedAt: i.addedAt,
-      watched: i.watched,
-      watchedAt: i.watched ? now : null,
-      sourceMessageId: i.sourceMessageId,
-    })),
-  });
-
-  logger.info({ guildId: pending.guildId, count: toAdd.length }, 'Imported movies');
-  await interaction.update({
+  logger.info({ guildId: pending.guildId, added }, 'Imported movies');
+  await interaction.editReply({
     content: '',
     embeds: [
       new EmbedBuilder()
         .setColor(DONE)
-        .setTitle(`✅ Imported ${toAdd.length} movie(s)`)
-        .setDescription('Use `/ic movie list` to see the watchlist.'),
+        .setTitle(`✅ Imported ${added} movie(s)`)
+        .setDescription('Use `/ic movie list` to see the watchlist — ratings fill in as you browse it.'),
     ],
-    components: [],
-    files: [],
   });
 }
 
-// ── Slash command handlers ───────────────────────────────
-
-async function handleAdd(interaction: GuildChat): Promise<void> {
-  const title = cleanTitle(interaction.options.getString('title', true));
-  const normalized = normalizeTitle(title);
-  if (!normalized) {
-    await interaction.reply({ embeds: [errorEmbed('Invalid title', 'Give the movie a name with some letters or numbers.')], ephemeral: true });
-    return;
-  }
-
-  const existing = await db.movie.findUnique({ where: { guildId_normalized: { guildId: interaction.guildId, normalized } } });
-  if (existing) {
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(GREY)
-          .setTitle('Already on the list')
-          .setDescription(
-            existing.watched
-              ? `**${escapeMarkdown(existing.title)}** was already watched${existing.watchedAt ? ` <t:${unix(existing.watchedAt)}:R>` : ''}.`
-              : `**${escapeMarkdown(existing.title)}** was added by <@${existing.addedById}> <t:${unix(existing.addedAt)}:R>.`,
-          ),
-      ],
-      ephemeral: true,
-      allowedMentions: { parse: [] },
-    });
-    return;
-  }
-
-  try {
-    await db.movie.create({ data: { guildId: interaction.guildId, title, normalized, addedById: interaction.user.id } });
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      await interaction.reply({ content: `**${escapeMarkdown(title)}** is already on the list.`, ephemeral: true });
-      return;
-    }
-    throw err;
-  }
-
-  const todo = await db.movie.count({ where: { guildId: interaction.guildId, watched: false } });
-  await interaction.reply({
-    embeds: [
-      new EmbedBuilder()
-        .setColor(ACCENT)
-        .setDescription(`🎬 **${escapeMarkdown(title)}** added to the watchlist by <@${interaction.user.id}>`)
-        .setFooter({ text: `${todo} to watch · /ic movie list` }),
-    ],
-    allowedMentions: { parse: [] },
-  });
-}
+// ── Other slash command handlers ─────────────────────────
 
 async function handleWatched(interaction: GuildChat): Promise<void> {
   const movie = await findMovie(interaction.guildId, interaction.options.getString('title', true), false);
@@ -535,7 +846,7 @@ async function handleWatched(interaction: GuildChat): Promise<void> {
   }
   await db.movie.update({ where: { id: movie.id }, data: { watched: true, watchedAt: new Date(), watchedById: interaction.user.id } });
   await interaction.reply({
-    embeds: [new EmbedBuilder().setColor(DONE).setDescription(`✅ **${escapeMarkdown(movie.title)}** marked as watched by <@${interaction.user.id}>`)],
+    embeds: [new EmbedBuilder().setColor(DONE).setDescription(`✅ **${escapeMarkdown(withYear(movie.title, movie.year))}** marked as watched by <@${interaction.user.id}>`)],
     allowedMentions: { parse: [] },
   });
 }
@@ -554,7 +865,7 @@ async function handleRemove(interaction: GuildChat): Promise<void> {
     return;
   }
   await db.movie.delete({ where: { id: movie.id } });
-  await interaction.reply({ content: `🗑️ Removed **${escapeMarkdown(movie.title)}** from the list.`, ephemeral: true });
+  await interaction.reply({ content: `🗑️ Removed **${escapeMarkdown(withYear(movie.title, movie.year))}** from the list.`, ephemeral: true });
 }
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -567,8 +878,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     case 'add':
       return handleAdd(interaction);
     case 'list': {
+      await interaction.deferReply();
       const state = parseState([interaction.options.getString('show') ?? 'todo', interaction.options.getString('sort') ?? 'new', '0']);
-      await interaction.reply(await renderList(interaction.guildId, state));
+      await interaction.editReply(await renderList(interaction.guildId, state));
       return;
     }
     case 'watched':
@@ -576,7 +888,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     case 'remove':
       return handleRemove(interaction);
     case 'random':
-      await interaction.reply(await renderRandom(interaction.guildId));
+      await interaction.deferReply();
+      await interaction.editReply(await renderRandom(interaction.guildId));
       return;
     case 'import':
       return handleImport(interaction);
@@ -585,8 +898,22 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 export async function autocomplete(interaction: AutocompleteInteraction): Promise<void> {
   if (!interaction.guildId) return interaction.respond([]);
-  const query = normalizeTitle(String(interaction.options.getFocused()));
+  const typed = String(interaction.options.getFocused()).trim();
   const sub = interaction.options.getSubcommand(false);
+
+  if (sub === 'add') {
+    if (!isTmdbConfigured() || typed.length < 2) return interaction.respond([]);
+    let results = await searchMovies(typed, 8, 1400).catch(() => [] as TmdbMovie[]);
+    // Typo? Try the longest word instead ("harrpy potter" → "potter")
+    const retry = fallbackQueries(typed)[0];
+    if (results.length === 0 && retry) results = await searchMovies(retry, 8, 1200).catch(() => [] as TmdbMovie[]);
+    return interaction.respond([
+      ...results.map((r) => ({ name: truncate(withYear(r.title, r.year), 100), value: `tmdb:${r.id}` })),
+      { name: truncate(`➕ "${typed}" (as typed)`, 100), value: truncate(typed, 100) },
+    ]);
+  }
+
+  const query = normalizeTitle(typed);
   const movies = await db.movie.findMany({
     where: {
       guildId: interaction.guildId,
@@ -597,7 +924,7 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
     take: 25,
   });
   await interaction.respond(
-    movies.map((m) => ({ name: truncate(`${m.watched ? '✅ ' : ''}${m.title}`, 100), value: String(m.id) })),
+    movies.map((m) => ({ name: truncate(`${m.watched ? '✅ ' : ''}${withYear(m.title, m.year)}`, 100), value: String(m.id) })),
   );
 }
 
@@ -610,17 +937,20 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
 
   switch (action) {
     case 'v': // page / toggle watched view
-      await interaction.update(await renderList(guildId, parseState(parts)));
+      await interaction.deferUpdate();
+      await interaction.editReply(await renderList(guildId, parseState(parts)));
       return;
 
     case 'sort': {
       if (!interaction.isStringSelectMenu()) return;
-      await interaction.update(await renderList(guildId, parseState([parts[0], interaction.values[0], '0'])));
+      await interaction.deferUpdate();
+      await interaction.editReply(await renderList(guildId, parseState([parts[0], interaction.values[0], '0'])));
       return;
     }
 
     case 'mark': {
       if (!interaction.isStringSelectMenu()) return;
+      await interaction.deferUpdate();
       const state = parseState(parts);
       const ids = interaction.values.map(Number).filter(Number.isInteger);
       const markWatched = state.show === 'todo';
@@ -635,16 +965,18 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
       const note = movies.length
         ? `${markWatched ? '✅' : '↩️'} <@${interaction.user.id}> ${markWatched ? 'marked' : 'moved back'} ${truncate(names, 1500)}${markWatched ? ' as watched' : ' to the watchlist'}`
         : undefined;
-      await interaction.update(await renderList(guildId, state, note));
+      await interaction.editReply(await renderList(guildId, state, note));
       return;
     }
 
     case 'rand':
-      await interaction.reply(await renderRandom(guildId));
+      await interaction.deferReply();
+      await interaction.editReply(await renderRandom(guildId));
       return;
 
     case 'reroll':
-      await interaction.update(await renderRandom(guildId, Number(parts[0])));
+      await interaction.deferUpdate();
+      await interaction.editReply(await renderRandom(guildId, Number(parts[0])));
       return;
 
     case 'pick': {
@@ -656,7 +988,11 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
         embeds: [
           new EmbedBuilder()
             .setColor(DONE)
-            .setDescription(movie ? `✅ **${escapeMarkdown(movie.title)}** marked as watched by <@${interaction.user.id}>` : 'That movie is no longer on the list.'),
+            .setDescription(
+              movie
+                ? `✅ **${escapeMarkdown(withYear(movie.title, movie.year))}** marked as watched by <@${interaction.user.id}>`
+                : 'That movie is no longer on the list.',
+            ),
         ],
         components: [],
         allowedMentions: { parse: [] },
@@ -664,8 +1000,12 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
       return;
     }
 
+    case 'addpick':
+      if (interaction.isStringSelectMenu()) await handleAddPick(interaction, parts[0]);
+      return;
+
     case 'imp':
-      if (interaction.isButton()) await confirmImport(interaction, parts[0], parts[1] === 'ok');
+      if (interaction.isButton()) await confirmImport(interaction, parts[0], parts[1]);
       return;
   }
 }

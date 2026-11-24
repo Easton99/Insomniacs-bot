@@ -253,21 +253,21 @@ window.IC_COMMANDS = [
   // ── Movie night ───────────────────────────────────────
   {
     name: 'movie add', category: 'movies', requires: 'anyone', visibility: 'everyone', popular: true,
-    synopsis: 'Add a movie to the group watchlist.',
-    description: 'Adds a film to this server\'s shared watchlist. Duplicates are caught even with different capitalisation or punctuation ("The Matrix" and "matrix" count as the same film), and you\'ll be told who added it and when.',
+    synopsis: 'Add a movie to the group watchlist — searched in a movie database so it gets its proper name.',
+    description: 'As you type, suggestions come from the TMDB movie database (e.g. "Dune: Part Two (2024)"), so the film is saved with its official title, year, poster and links. If you type something and don\'t pick a suggestion, the bot asks "Which film did you mean?" with the closest matches, or lets you add it exactly as typed. Duplicates are caught, including the same film typed differently.',
     params: [
-      { name: 'title', type: 'Text', required: true, values: ['Up to 100 characters'], desc: 'The movie title.' },
+      { name: 'title', type: 'Text', required: true, values: ['Up to 100 characters'], desc: 'Start typing the film\'s name and pick it from the suggestions.' },
     ],
     examples: [
-      { title: 'Add a movie', cmd: '/ic movie add title:Dune: Part Two', explain: 'Adds Dune: Part Two to the watchlist.' },
+      { title: 'Add a movie', cmd: '/ic movie add title:dune part 2', explain: 'Pick "Dune: Part Two (2024)" from the suggestions and it\'s added with its proper title and ratings.' },
     ],
-    output: 'A short message in the channel saying who added what, and how many films are left to watch.',
+    output: 'A message in the channel with the film\'s poster, year, IMDb rating, Metacritic score, and IMDb and Rotten Tomatoes links, and who added it. If the bot needs you to pick the right film, that step is only shown to you.',
     related: ['movie list', 'movie random'],
   },
   {
     name: 'movie list', category: 'movies', requires: 'anyone', visibility: 'everyone', popular: true,
     synopsis: 'Show the watchlist — and tick movies off straight from the message.',
-    description: 'Shows the watchlist 10 at a time. Everything is clickable: pick one or more films from the menu to mark them as watched, change the order with the sort menu, flip between the to-watch and watched lists, page through with the arrows, or hit Random pick. In the watched view, the same menu moves films back onto the watchlist. Anyone in the channel can use the buttons.',
+    description: 'Shows the watchlist 10 at a time, with each film\'s year, IMDb rating (⭐), Metacritic score (Ⓜ), and links to IMDb and Rotten Tomatoes. Ratings are refreshed weekly. Everything is clickable: pick one or more films from the menu to mark them as watched, change the order with the sort menu, flip between the to-watch and watched lists, page through with the arrows, or hit Random pick. In the watched view, the same menu moves films back onto the watchlist. Anyone in the channel can use the buttons.',
     params: [
       { name: 'show', type: 'Choice', required: false, default: 'To watch', values: ['To watch', 'Watched'], desc: 'Which list to show first.' },
       { name: 'sort', type: 'Choice', required: false, default: 'Newest first', values: ['Newest first', 'Oldest first', 'A–Z'], desc: 'The order to show them in. You can change it from the message too.' },
@@ -277,7 +277,7 @@ window.IC_COMMANDS = [
       { title: 'Oldest suggestions first', cmd: '/ic movie list sort:Oldest first', explain: 'Shows the films that have been waiting longest.' },
       { title: 'What have we watched?', cmd: '/ic movie list show:Watched', explain: 'Shows watched films, most recent first.' },
     ],
-    output: 'A numbered list with who added each film and when, plus menus and buttons to mark as watched, sort, switch lists, page and pick at random.',
+    output: 'A numbered list with year, IMDb and Metacritic scores, IMDb and Rotten Tomatoes links, who added each film and when, plus menus and buttons to mark as watched, sort, switch lists, page and pick at random.',
     related: ['movie add', 'movie watched', 'movie random'],
   },
   {
@@ -314,20 +314,20 @@ window.IC_COMMANDS = [
     examples: [
       { title: 'Pick for us', cmd: '/ic movie random', explain: 'Shows a random film from the watchlist with Watched it and Reroll buttons.' },
     ],
-    output: '"🎲 Tonight\'s pick" with the film, who added it, and Watched it / Reroll buttons.',
+    output: '"🎲 Tonight\'s pick" with the film\'s poster, ratings and links, who added it, and Watched it / Reroll buttons.',
     related: ['movie list'],
   },
   {
     name: 'movie import', category: 'movies', requires: 'adminonly', visibility: 'only-you',
     synopsis: 'One-time import of movie names already posted in a channel.',
-    description: 'Reads every message in a channel (up to 5,000) and pulls out movie names — one per line, with bullets, numbering, links, emoji and mentions stripped, and chatty lines like questions skipped. Messages with a ✅ reaction are imported as already watched. You get a preview with the full list as a text file before anything is saved, and duplicates and films already on the list are skipped, so it\'s safe to run again. Needs Manage Server, and the bot needs Message Content Intent turned on in the Discord Developer Portal plus Read Message History in that channel.',
+    description: 'Reads every message in a channel (up to 5,000) and checks each line against the TMDB movie database. Lines that clearly match a film are imported under its official title. Close-but-unsure matches (typos, or a series name like "Harry Potter") are listed as best guesses for you to check. Lines that aren\'t films, like general chat, are skipped. Messages with a ✅ reaction are imported as already watched. Nothing is saved until you\'ve seen the preview, which includes a text file of every line and what it matched, and you choose to import just the matches or the matches plus the guesses. Duplicates and films already on the list are skipped, so it\'s safe to run again. Needs Manage Server, and the bot needs Message Content Intent turned on in the Discord Developer Portal plus Read Message History in that channel.',
     params: [
       { name: 'channel', type: 'Channel', required: true, desc: 'The channel people have been posting movie names in.' },
     ],
     examples: [
-      { title: 'Import the movies channel', cmd: '/ic movie import channel:#movies', explain: 'Scans #movies and shows a preview with Import and Cancel buttons.' },
+      { title: 'Import the movies channel', cmd: '/ic movie import channel:#movies', explain: 'Scans #movies, matches each line to a film, and shows a preview with import buttons.' },
     ],
-    output: 'A private preview (counts, first 10 titles and a .txt of everything found) with Import and Cancel buttons. Only the person who ran it can confirm, within 15 minutes.',
+    output: 'A private preview showing matched, best-guess and skipped counts, samples, and a .txt report, with "Import matched", "Import matched + guesses" and "Cancel" buttons. Only the person who ran it can confirm, within 15 minutes.',
     related: ['movie list', 'movie remove'],
   },
 

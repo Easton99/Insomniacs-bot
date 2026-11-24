@@ -1,5 +1,63 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeTitle, parseMovieLines } from '../movie-utils';
+import { classifyMatch, fallbackQueries, normalizeTitle, parseMovieLines, titleSimilarity } from '../movie-utils';
+
+describe('fallbackQueries', () => {
+  it('searches on the longest words of a multi-word line', () => {
+    expect(fallbackQueries('Harrpy potter')).toEqual(['harrpy', 'potter']);
+  });
+  it('searches on the start of a single long word', () => {
+    expect(fallbackQueries('interstelar')).toEqual(['interstelar'.slice(0, 8)]);
+  });
+  it('has nothing extra for short single words', () => {
+    expect(fallbackQueries('Heat')).toEqual([]);
+  });
+});
+
+const film = (title: string, voteCount = 5000, popularity = 50) => ({ title, originalTitle: title, voteCount, popularity });
+
+describe('titleSimilarity', () => {
+  it('is 1 for the same title written differently', () => {
+    expect(titleSimilarity('dune part two', 'Dune: Part Two')).toBe(1);
+  });
+  it('tolerates small typos', () => {
+    expect(titleSimilarity('Interstelar', 'Interstellar')).toBeGreaterThan(0.9);
+  });
+  it('is low for unrelated text', () => {
+    expect(titleSimilarity('lol same', 'Dune')).toBeLessThan(0.3);
+  });
+});
+
+describe('classifyMatch', () => {
+  it('auto-matches a near-identical, well-known film', () => {
+    const r = classifyMatch('dune part 2', [film('Dune: Part Two'), film('Dune')]);
+    expect(r.kind).toBe('matched');
+    expect(r.best?.title).toBe('Dune: Part Two');
+  });
+  it('flags a franchise name as unsure rather than guessing a film', () => {
+    const r = classifyMatch('Harry Potter', [film('Harry Potter and the Philosopher\'s Stone')]);
+    expect(r.kind).not.toBe('matched');
+  });
+  it('does not auto-match obscure films with chat-like names', () => {
+    expect(classifyMatch('same', [film('Same', 3)]).kind).toBe('unsure');
+  });
+  it('returns none when nothing comes back', () => {
+    expect(classifyMatch('has anyone seen it', []).kind).toBe('none');
+  });
+  it('treats a series name or misspelt series as a best guess', () => {
+    const results = [film('Harry Potter and the Goblet of Fire', 22994, 40), film('Harry Potter and the Philosopher\'s Stone', 30686, 80)];
+    expect(classifyMatch('Harry Potter', results).kind).toBe('unsure');
+    expect(classifyMatch('Harrpy potter', results).kind).toBe('unsure');
+  });
+  it('prefers a well-known film over a near-empty exact-title entry', () => {
+    const r = classifyMatch('interstelar', [film('Interstelar', 0, 1), film('Interstellar', 35000, 120)]);
+    expect(r.best?.title).toBe('Interstellar');
+    expect(r.kind).toBe('matched');
+  });
+  it('prefers the more popular film when titles tie', () => {
+    const r = classifyMatch('Dune', [film('Dune', 4000, 20), film('Dune', 12000, 90)]);
+    expect(r.best?.popularity).toBe(90);
+  });
+});
 
 describe('normalizeTitle', () => {
   it('ignores case, punctuation, accents and a leading "The"', () => {
