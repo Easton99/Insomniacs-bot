@@ -267,15 +267,16 @@ window.IC_COMMANDS = [
   {
     name: 'movie addmany', category: 'movies', requires: 'anyone', visibility: 'everyone',
     synopsis: 'Add several movies at once, separated by commas.',
-    description: 'Type up to 25 films separated by commas, e.g. "Dune, Heat, Interstellar", either in the titles option or, if you leave it empty, in a text box that opens. Titles that contain a comma, such as "Crouching Tiger, Hidden Dragon", are kept together. Each film is looked up in the movie database, then you get a private checklist before anything is saved. Every film has its own menu with the top matches (the best one already selected), plus "add exactly as typed" and "skip". Films the bot isn\'t sure about, like typos or series names such as "Harry Potter", are marked ❓ so you can check them. Press ✅ Add when it looks right. Films already on the list are left out. The ➕ Add movies button on the movie board opens the same box.',
+    description: 'Type up to 25 films separated by commas, e.g. "Dune, Heat, Interstellar", either in the titles option or, if you leave it empty, in a text box that opens. Titles that contain a comma, such as "Crouching Tiger, Hidden Dragon", are kept together. Repeat a series name to add several films from it: "Harry Potter, Harry Potter, Harry Potter" pre-selects the first three films in order, and you can change any of them. Each film is looked up in the movie database, then you go through them privately one at a time. Each one shows its poster and plot, with the best match already selected and a menu to pick a different match or add it exactly as typed. Then press ➕ Add, ✅ Add as watched (for films you\'ve already seen) or ⏭️ Skip to move on to the next. Stop finishes early, keeping what\'s been added so far. Films the bot isn\'t sure about, like typos or series names, are marked ❓. Films already on the list are left out. The ➕ Add movies button on the movie board opens the same box.',
     params: [
       { name: 'titles', type: 'Text', required: false, values: ['Up to 1,500 characters'], desc: 'Films separated by commas. Leave empty to open a bigger text box instead.' },
     ],
     examples: [
-      { title: 'Add a few films', cmd: '/ic movie addmany titles:Dune Part Two, Interstellar, Heat', explain: 'Looks up all three, shows the checklist, then adds them when you press Add.' },
+      { title: 'Add a few films', cmd: '/ic movie addmany titles:Dune Part Two, Interstellar, Heat', explain: 'Looks up all three and shows them one at a time. Press Add, Add as watched or Skip for each.' },
+      { title: 'Add a series', cmd: '/ic movie addmany titles:Harry Potter, Harry Potter, Harry Potter', explain: 'Steps through the first three Harry Potter films in order.' },
       { title: 'Use the text box', cmd: '/ic movie addmany', explain: 'Opens a box for a longer comma-separated list.' },
     ],
-    output: 'A private checklist (4 films per page) with a menu per film to pick the right match, then one message in the channel listing every film added.',
+    output: 'A private step-by-step card for each film with Add, Add as watched, Skip and Stop buttons, then one message in the channel listing every film added (with watched ones marked).',
     related: ['movie add', 'movie board'],
   },
   {

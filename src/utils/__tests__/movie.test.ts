@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { classifyMatch, fallbackQueries, normalizeTitle, parseMovieLines, titleSimilarity } from '../movie-utils';
+import { classifyMatch, fallbackQueries, normalizeTitle, orderCandidates, parseMovieLines, titleSimilarity } from '../movie-utils';
+
+describe('orderCandidates', () => {
+  const f = (id: number, title: string, year: number) => ({ id, title, originalTitle: title, year, voteCount: 1000, popularity: 10 });
+  it('lists the rest of a series in release order before loosely related films', () => {
+    const best = f(1, 'Harry Potter and the Philosopher\'s Stone', 2001);
+    const results = [
+      f(2, 'Harry Potter and the Goblet of Fire', 2005),
+      f(3, 'Dirty Harry', 1971),
+      best,
+      f(4, 'Harry Potter and the Chamber of Secrets', 2002),
+      f(5, 'When Harry Met Sally...', 1989),
+    ];
+    expect(orderCandidates('harry potter', results, best).map((r) => r.id)).toEqual([1, 4, 2, 3, 5]);
+  });
+});
 
 describe('fallbackQueries', () => {
   it('searches on the longest words of a multi-word line', () => {

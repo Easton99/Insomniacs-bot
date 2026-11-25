@@ -22,6 +22,7 @@ export interface TmdbMovie {
   posterPath: string | null;
   popularity: number;
   voteCount: number;
+  overview: string | null;
 }
 
 export interface TmdbDetails extends TmdbMovie {
@@ -68,6 +69,7 @@ interface RawTmdbMovie {
   popularity?: number;
   vote_count?: number;
   imdb_id?: string | null;
+  overview?: string;
 }
 
 function toMovie(r: RawTmdbMovie): TmdbMovie {
@@ -80,6 +82,7 @@ function toMovie(r: RawTmdbMovie): TmdbMovie {
     posterPath: r.poster_path ?? null,
     popularity: r.popularity ?? 0,
     voteCount: r.vote_count ?? 0,
+    overview: r.overview?.trim() || null,
   };
 }
 

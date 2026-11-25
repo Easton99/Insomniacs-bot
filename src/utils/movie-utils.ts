@@ -64,6 +64,27 @@ function prefixSimilarity(text: string, title: string): number {
   return titleSimilarity(words.join(' '), titleWords.slice(0, words.length).join(' '));
 }
 
+/** How well a title fits what was typed: whole-title or start-of-title similarity (0–1). */
+export function matchScore(text: string, title: string): number {
+  return Math.max(titleSimilarity(text, title), prefixSimilarity(text, title));
+}
+
+/**
+ * Orders search results for a menu: the best match first, then close matches
+ * (e.g. the rest of a series) in release order, then loosely related films.
+ */
+export function orderCandidates<T extends MatchCandidate & { id: number; year: number | null }>(
+  text: string,
+  results: T[],
+  best: T | null,
+): T[] {
+  const close = (r: T) => Math.max(matchScore(text, r.title), matchScore(text, r.originalTitle)) >= PREFIX_THRESHOLD;
+  const rest = results.filter((r) => r.id !== best?.id);
+  const byYear = (a: T, b: T) => (a.year ?? 9999) - (b.year ?? 9999);
+  const ordered = [...rest.filter(close).sort(byYear), ...rest.filter((r) => !close(r))];
+  return best ? [best, ...ordered] : ordered;
+}
+
 /**
  * Picks the best search result for a line of text and says how confident we are:
  *  matched — near-identical title of a known film (imported automatically)
