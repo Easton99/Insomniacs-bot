@@ -125,6 +125,17 @@ export const group = new SlashCommandSubcommandGroupBuilder()
         o.setName('title').setDescription('Start typing to search the watchlist').setRequired(true).setAutocomplete(true),
       ),
   )
+  .addSubcommand((s) =>
+    s
+      .setName('addmany')
+      .setDescription('Add several movies at once, separated by commas')
+      .addStringOption((o) =>
+        o
+          .setName('titles')
+          .setDescription('Films separated by commas, e.g. Dune, Heat, Interstellar (leave empty to open a text box)')
+          .setMaxLength(1500),
+      ),
+  )
   .addSubcommand((s) => s.setName('random').setDescription('Pick a random movie to watch'))
   .addSubcommand((s) =>
     s
@@ -527,6 +538,7 @@ function prunePending(): void {
   const now = Date.now();
   for (const [k, v] of pendingAdds) if (v.expires < now) pendingAdds.delete(k);
   for (const [k, v] of pendingImports) if (v.expires < now) pendingImports.delete(k);
+  for (const [k, v] of pendingBulk) if (v.expires < now) pendingBulk.delete(k);
 }
 
 /** Saves the film, then posts a public "added" message and removes the private working reply. */
@@ -1047,7 +1059,7 @@ async function renderBoard(guildId: string) {
   embeds[embeds.length - 1].setFooter({ text: 'Updates automatically · in the order they were added' }).setTimestamp(new Date());
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}addbox`).setLabel('➕ Add a movie').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}addbox`).setLabel('➕ Add movies').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}open`).setLabel('📋 Browse & tick off').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}rand`).setLabel('🎲 Random pick').setStyle(ButtonStyle.Secondary).setDisabled(todo.length === 0),
   );
@@ -1217,17 +1229,306 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return handleImport(interaction);
     case 'info':
       return handleInfo(interaction);
+    case 'addmany': {
+      const titles = interaction.options.getString('titles');
+      if (!titles) {
+        await interaction.showModal(addMoviesModal());
+        return;
+      }
+      await interaction.deferReply({ ephemeral: true });
+      return addFromList(interaction, interaction.guildId, titles);
+    }
     case 'board':
       return handleBoard(interaction);
   }
 }
 
-/** The board's "Add a movie" box. */
+/** The board's "➕ Add movies" box. */
 export async function handleMovieModal(interaction: ModalSubmitInteraction): Promise<void> {
   if (!interaction.guildId) return;
   await interaction.deferReply({ ephemeral: true });
-  const title = cleanTitle(interaction.fields.getTextInputValue('title'));
-  await addFromText(interaction, interaction.guildId, title);
+  await addFromList(interaction, interaction.guildId, interaction.fields.getTextInputValue('title'));
+}
+
+/**
+ * Splits typed text into film titles. Commas separate films (new lines work too),
+ * but a comma-containing piece that is itself an exact film title
+ * ("Crouching Tiger, Hidden Dragon") is kept whole.
+ */
+async function splitTitles(text: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    if (!raw.includes(',')) {
+      out.push(...parseMovieLines(raw));
+      continue;
+    }
+    const whole = parseMovieLines(raw)[0];
+    if (whole && isTmdbConfigured()) {
+      const found = await searchWithFallback(whole, 5).catch(() => null);
+      if (found?.best && found.kind === 'matched' && normalizeTitle(found.best.title) === normalizeTitle(whole)) {
+        out.push(whole);
+        continue;
+      }
+    }
+    out.push(...parseMovieLines(raw.split(',').join('\n')));
+  }
+
+  const seen = new Set<string>();
+  return out.filter((t) => {
+    const key = normalizeTitle(t);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function addFromList(interaction: GuildChat | ModalSubmitInteraction, guildId: string, text: string): Promise<void> {
+  const titles = await splitTitles(text);
+  if (titles.length === 0) {
+    await interaction.editReply({ embeds: [errorEmbed('Nothing to add', 'Type at least one film name — separate several with commas.')] });
+    return;
+  }
+  await addMany(interaction, guildId, titles);
+}
+
+// ── Adding from the text box (one or many) — always reviewed ──
+
+const MAX_BULK = 25;
+const REVIEW_PAGE = 4; // a message has 5 rows: 4 film menus + 1 row of buttons
+
+function addMoviesModal(): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId(`${MOVIE_PREFIX}addbox`)
+    .setTitle('Add movies')
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('title')
+          .setLabel(`Movie titles, separated by commas (up to ${MAX_BULK})`)
+          .setPlaceholder('Dune Part Two, Interstellar, The Grand Budapest Hotel')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+          .setMaxLength(3000),
+      ),
+    );
+}
+
+interface ReviewItem {
+  text: string; // what was typed
+  candidates: TmdbMovie[]; // best first
+  choice: string; // 'tmdb:<id>' | 'raw' | 'skip'
+  confidence: 'sure' | 'guess' | 'none' | 'picked';
+}
+
+interface Review {
+  guildId: string;
+  userId: string;
+  items: ReviewItem[];
+  already: string[];
+  truncated: boolean;
+  page: number;
+  expires: number;
+}
+
+const pendingBulk = new Map<string, Review>();
+
+/** One public message listing everything that was just added. */
+async function announceAdded(interaction: GuildChat | ModalSubmitInteraction | ButtonInteraction, guildId: string, movies: Movie[]): Promise<void> {
+  if (movies.length === 0) return;
+  scheduleBoardRefresh(interaction.client, guildId);
+  void backfillMetadata(interaction.client, guildId);
+  const todo = await db.movie.count({ where: { guildId, watched: false } });
+  const list = movies.map((m) => `• ${m.imdbId ? `[${escapeMarkdown(withYear(m.title, m.year))}](${imdbUrl(m.imdbId)})` : escapeMarkdown(withYear(m.title, m.year))}`);
+  await interaction.followUp({
+    embeds: [
+      new EmbedBuilder()
+        .setColor(ACCENT)
+        .setDescription(truncate(`🎬 <@${interaction.user.id}> added **${movies.length}** film${movies.length === 1 ? '' : 's'} to the watchlist\n\n${list.join('\n')}`, 4096))
+        .setFooter({ text: `${todo} to watch · /ic movie list` }),
+    ],
+    allowedMentions: { parse: [] },
+  });
+}
+
+function choiceLabel(item: ReviewItem): string {
+  if (item.choice === 'skip') return `⏭️ ~~${escapeMarkdown(item.text)}~~ — skipped`;
+  if (item.choice === 'raw') return `➕ "${escapeMarkdown(item.text)}" — exactly as typed${item.confidence === 'none' ? ' (not found)' : ''}`;
+  const film = item.candidates.find((c) => `tmdb:${c.id}` === item.choice);
+  const name = film ? escapeMarkdown(withYear(film.title, film.year)) : escapeMarkdown(item.text);
+  const typed = film && normalizeTitle(film.title) !== normalizeTitle(item.text) ? ` ← "${escapeMarkdown(item.text)}"` : '';
+  const icon = item.confidence === 'guess' ? '❓' : '✅';
+  return `${icon} **${name}**${typed}${item.confidence === 'guess' ? ' — best guess, please check' : ''}`;
+}
+
+function renderReview(token: string, review: Review) {
+  const pages = Math.max(1, Math.ceil(review.items.length / REVIEW_PAGE));
+  const page = Math.min(Math.max(review.page, 0), pages - 1);
+  review.page = page;
+  const toAdd = review.items.filter((i) => i.choice !== 'skip').length;
+
+  const lines = review.items.map((item, i) => `\`${i + 1}.\` ${choiceLabel(item)}`);
+  const notes = [
+    review.already.length ? `📋 Already on the list: ${truncate(review.already.map((t) => escapeMarkdown(t)).join(', '), 500)}` : null,
+    review.truncated ? `⚠️ Only the first ${MAX_BULK} lines were used — add the rest in another go.` : null,
+  ].filter(Boolean);
+
+  const embed = new EmbedBuilder()
+    .setColor(ACCENT)
+    .setTitle(`🎬 Check before adding (${review.items.length})`)
+    .setDescription(truncate([lines.join('\n'), ...notes].join('\n\n'), 4096))
+    .setFooter({ text: `If any are wrong, pick the right film from its menu below${pages > 1 ? ` · page ${page + 1}/${pages}` : ''}, then press Add.` });
+
+  const rows: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
+  const start = page * REVIEW_PAGE;
+  review.items.slice(start, start + REVIEW_PAGE).forEach((item, offset) => {
+    const index = start + offset;
+    const options = [
+      ...item.candidates.slice(0, 6).map((c, ci) => ({
+        label: truncate(withYear(c.title, c.year), 100),
+        description: truncate(ci === 0 && item.confidence !== 'none' ? 'Best match' : c.originalTitle !== c.title ? c.originalTitle : 'Other match', 100),
+        value: `tmdb:${c.id}`,
+        default: item.choice === `tmdb:${c.id}`,
+      })),
+      { label: truncate(`Add "${item.text}" exactly as typed`, 100), value: 'raw', emoji: '➕', default: item.choice === 'raw' },
+      { label: 'Skip this one', value: 'skip', emoji: '⏭️', default: item.choice === 'skip' },
+    ];
+    rows.push(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`${MOVIE_PREFIX}bv:${token}:${index}`)
+          .setPlaceholder(truncate(`${index + 1}. ${item.text}`, 150))
+          .addOptions(options),
+      ),
+    );
+  });
+
+  const buttons = new ActionRowBuilder<ButtonBuilder>();
+  if (pages > 1) {
+    buttons.addComponents(
+      new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}bp:${token}:${page - 1}`).setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
+      new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}bp:${token}:${page + 1}`).setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(page >= pages - 1),
+    );
+  }
+  buttons.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`${MOVIE_PREFIX}bgo:${token}`)
+      .setLabel(toAdd ? `✅ Add ${toAdd} film${toAdd === 1 ? '' : 's'}` : 'Nothing selected')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(toAdd === 0),
+    new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}bno:${token}`).setLabel('Cancel').setStyle(ButtonStyle.Secondary),
+  );
+  rows.push(buttons);
+
+  return { content: '', embeds: [embed], components: rows };
+}
+
+/**
+ * Looks up each typed film and shows a private review: every film gets a menu
+ * of matches (best one pre-selected), "as typed" and "skip". Nothing is saved
+ * until Add is pressed, so the right film can always be chosen.
+ */
+async function addMany(interaction: GuildChat | ModalSubmitInteraction, guildId: string, allLines: string[]): Promise<void> {
+  prunePending();
+  const lines = allLines.slice(0, MAX_BULK);
+  await interaction.editReply({ content: `Looking up ${lines.length} film${lines.length === 1 ? '' : 's'}…` });
+
+  const useTmdb = isTmdbConfigured();
+  const lookups = await mapLimit(lines, 4, async (text) => {
+    if (!useTmdb) return { text, kind: 'none' as MatchKind, best: null as TmdbMovie | null, results: [] as TmdbMovie[] };
+    const found = await searchWithFallback(text, 5);
+    return { text, kind: found.kind, best: found.best, results: found.results };
+  });
+
+  const items: ReviewItem[] = [];
+  const already: string[] = [];
+  for (const r of lookups) {
+    // Leave out films that are clearly already on the list
+    if (r.kind === 'matched' && r.best) {
+      const existing = await db.movie.findFirst({ where: { guildId, tmdbId: r.best.id } });
+      if (existing) {
+        already.push(withYear(existing.title, existing.year));
+        continue;
+      }
+    }
+    const confidence: ReviewItem['confidence'] = r.kind === 'matched' ? 'sure' : r.kind === 'unsure' ? 'guess' : 'none';
+    const choice = r.kind !== 'none' && r.best ? `tmdb:${r.best.id}` : 'raw';
+    items.push({ text: r.text, candidates: r.results.slice(0, 6), choice, confidence });
+  }
+
+  if (items.length === 0) {
+    await interaction.editReply({
+      content: '',
+      embeds: [new EmbedBuilder().setColor(GREY).setTitle('Already on the list').setDescription(truncate(already.map((t) => escapeMarkdown(t)).join(', '), 4000))],
+    });
+    return;
+  }
+
+  const token = randomBytes(6).toString('hex');
+  const review: Review = {
+    guildId,
+    userId: interaction.user.id,
+    items,
+    already,
+    truncated: allLines.length > MAX_BULK,
+    page: 0,
+    expires: Date.now() + PENDING_TTL_MS,
+  };
+  pendingBulk.set(token, review);
+  await interaction.editReply(renderReview(token, review));
+}
+
+async function handleReviewComponent(interaction: ButtonInteraction | StringSelectMenuInteraction, action: string, parts: string[]): Promise<void> {
+  const token = parts[0];
+  const review = pendingBulk.get(token);
+  if (!review || review.expires < Date.now() || review.userId !== interaction.user.id) {
+    await interaction.update({ content: 'This list has expired — run `/ic movie addmany` again.', embeds: [], components: [] });
+    return;
+  }
+
+  if (action === 'bv' && interaction.isStringSelectMenu()) {
+    const item = review.items[Number(parts[1])];
+    if (item) {
+      item.choice = interaction.values[0];
+      item.confidence = 'picked';
+    }
+    await interaction.update(renderReview(token, review));
+    return;
+  }
+
+  if (action === 'bp') {
+    review.page = Number(parts[1]);
+    await interaction.update(renderReview(token, review));
+    return;
+  }
+
+  if (action === 'bno') {
+    pendingBulk.delete(token);
+    await interaction.update({ content: 'Cancelled — nothing was added.', embeds: [], components: [] });
+    return;
+  }
+
+  if (action === 'bgo' && interaction.isButton()) {
+    pendingBulk.delete(token);
+    await interaction.update({ content: 'Adding…', embeds: [], components: [] });
+
+    const added: Movie[] = [];
+    const alreadyThere: string[] = [];
+    for (const item of review.items) {
+      if (item.choice === 'skip') continue;
+      const tmdb = item.choice.startsWith('tmdb:') ? item.candidates.find((c) => `tmdb:${c.id}` === item.choice) ?? null : null;
+      const { movie, created } = await addMovie(review.guildId, tmdb ? tmdb.title : item.text, tmdb, { addedById: interaction.user.id });
+      if (created) added.push(movie);
+      else alreadyThere.push(withYear(movie.title, movie.year));
+    }
+
+    await interaction.editReply({
+      content: [
+        added.length ? `✅ Added ${added.length} film${added.length === 1 ? '' : 's'}.` : 'Nothing new was added.',
+        alreadyThere.length ? `📋 Already on the list: ${truncate(alreadyThere.join(', '), 1500)}` : null,
+      ].filter(Boolean).join('\n'),
+    });
+    await announceAdded(interaction, review.guildId, added);
+  }
 }
 
 export async function autocomplete(interaction: AutocompleteInteraction): Promise<void> {
@@ -1385,22 +1686,14 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
 
     case 'addbox':
       if (!interaction.isButton()) return;
-      await interaction.showModal(
-        new ModalBuilder()
-          .setCustomId(`${MOVIE_PREFIX}addbox`)
-          .setTitle('Add a movie')
-          .addComponents(
-            new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId('title')
-                .setLabel('Movie title')
-                .setPlaceholder('e.g. Dune Part Two')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMaxLength(MAX_TITLE_LENGTH),
-            ),
-          ),
-      );
+      await interaction.showModal(addMoviesModal());
+      return;
+
+    case 'bv':
+    case 'bp':
+    case 'bgo':
+    case 'bno':
+      await handleReviewComponent(interaction, action, parts);
       return;
 
     case 'imp':

@@ -265,6 +265,20 @@ window.IC_COMMANDS = [
     related: ['movie list', 'movie random'],
   },
   {
+    name: 'movie addmany', category: 'movies', requires: 'anyone', visibility: 'everyone',
+    synopsis: 'Add several movies at once, separated by commas.',
+    description: 'Type up to 25 films separated by commas, e.g. "Dune, Heat, Interstellar", either in the titles option or, if you leave it empty, in a text box that opens. Titles that contain a comma, such as "Crouching Tiger, Hidden Dragon", are kept together. Each film is looked up in the movie database, then you get a private checklist before anything is saved. Every film has its own menu with the top matches (the best one already selected), plus "add exactly as typed" and "skip". Films the bot isn\'t sure about, like typos or series names such as "Harry Potter", are marked ❓ so you can check them. Press ✅ Add when it looks right. Films already on the list are left out. The ➕ Add movies button on the movie board opens the same box.',
+    params: [
+      { name: 'titles', type: 'Text', required: false, values: ['Up to 1,500 characters'], desc: 'Films separated by commas. Leave empty to open a bigger text box instead.' },
+    ],
+    examples: [
+      { title: 'Add a few films', cmd: '/ic movie addmany titles:Dune Part Two, Interstellar, Heat', explain: 'Looks up all three, shows the checklist, then adds them when you press Add.' },
+      { title: 'Use the text box', cmd: '/ic movie addmany', explain: 'Opens a box for a longer comma-separated list.' },
+    ],
+    output: 'A private checklist (4 films per page) with a menu per film to pick the right match, then one message in the channel listing every film added.',
+    related: ['movie add', 'movie board'],
+  },
+  {
     name: 'movie list', category: 'movies', requires: 'anyone', visibility: 'everyone', popular: true,
     synopsis: 'Show the watchlist — and tick movies off straight from the message.',
     description: 'Shows the watchlist 10 at a time, with each film\'s year, IMDb rating (⭐), Metacritic score (Ⓜ), and links to IMDb and Rotten Tomatoes. Ratings are refreshed weekly. Everything is clickable: pick one or more films from the menu to mark them as watched, change the order with the sort menu, flip between the to-watch and watched lists, page through with the arrows, or hit Random pick. In the watched view, the same menu moves films back onto the watchlist. Anyone in the channel can use the buttons.',
@@ -333,7 +347,7 @@ window.IC_COMMANDS = [
   {
     name: 'movie board', category: 'movies', requires: 'adminonly', visibility: 'only-you',
     synopsis: 'A pinned watchlist message that keeps itself up to date.',
-    description: 'Posts the watchlist in a channel and pins it. From then on, the bot edits that same message whenever anyone adds, watches, removes or imports a film, so the pinned message is always current. It never posts new messages. It lists everything still to watch (in the order they were added, with ratings and IMDb links) plus the 5 most recently watched. Buttons on the board let anyone ➕ add a movie (a quick text box), 📋 browse and tick films off privately, or 🎲 get a random pick. Run it again to move the board; leave the channel empty to remove it. Pinning needs Manage Messages (or Pin Messages) for the bot in that channel. Without it, the board is posted but not pinned.',
+    description: 'Posts the watchlist in a channel and pins it. From then on, the bot edits that same message whenever anyone adds, watches, removes or imports a film, so the pinned message is always current. It never posts new messages. It lists everything still to watch (in the order they were added, with ratings and IMDb links) plus the 5 most recently watched. Buttons on the board let anyone ➕ add movies (type films separated by commas), 📋 browse and tick films off privately, or 🎲 get a random pick. Run it again to move the board; leave the channel empty to remove it. Pinning needs Manage Messages (or Pin Messages) for the bot in that channel. Without it, the board is posted but not pinned.',
     params: [
       { name: 'channel', type: 'Channel', required: false, desc: 'Where to post the board. Leave empty to remove the board.' },
     ],
