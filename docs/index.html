@@ -4,8 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Insomniacs Bot</title>
-  <meta name="description" content="A private Discord bot for the Insomniacs server — CS2 and FACEIT statistics, records, leaderboards, achievements, and more." />
-  <link rel="stylesheet" href="css/style.css?v=202611250020" />
+  <meta name="description" content="The Insomniacs' Discord bot — CS2 and FACEIT stats, a shared movie watchlist with ratings and trailers, birthday reminders and polls, all under one /ic command." />
+  <meta property="og:title" content="Insomniacs Bot" />
+  <meta property="og:description" content="Game stats, movie night and group life for the Insomniacs — all under one /ic command." />
+  <meta name="theme-color" content="#FF6B35" />
+  <link rel="stylesheet" href="/css/style.css?v=202611250026" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
 </head>
 <body>
@@ -28,92 +31,200 @@
 <!-- ── Hero ────────────────────────────────────────────── -->
 <section class="hero">
   <div class="wrap">
-    <span class="eyebrow">// CS2 · FACEIT Statistics</span>
-    <h1>The Insomniacs<br/>Stats Companion.</h1>
+    <span class="eyebrow">// the Insomniacs' Discord bot</span>
+    <h1>Game night, movie night<br/>&amp; everything between.</h1>
     <p class="hero-sub">
-      Track match history, settle arguments, find out who actually has the best K/D — all pulled straight from FACEIT and served on demand.
+      CS2 stats straight from FACEIT, a shared movie watchlist with ratings and trailers, birthday reminders and polls — all under one <code>/ic</code> command.
     </p>
     <div class="hero-actions">
       <a class="btn btn-primary" href="https://discord.com/oauth2/authorize?client_id=1540898204294582292&permissions=83968&scope=bot%20applications.commands" target="_blank" rel="noopener">Add to Server →</a>
-      <a class="btn btn-ghost" href="/commands">View Commands</a>
+      <a class="btn btn-ghost" href="/commands">Browse commands</a>
+    </div>
+    <div class="hero-pills" aria-label="Jump to">
+      <a class="hero-pill" href="/commands/stats">🎮 Game stats</a>
+      <a class="hero-pill" href="/commands/movies">🎬 Movie night</a>
+      <a class="hero-pill" href="/commands/utilities">🎉 Birthdays &amp; polls</a>
     </div>
   </div>
 </section>
 
-<!-- ── Features ────────────────────────────────────────── -->
+<!-- ── Three pillars ───────────────────────────────────── -->
 <section class="section" style="border-top: 1px solid var(--border);">
   <div class="wrap">
     <div class="section-header">
-      <span class="eyebrow">// features</span>
-      <h2>Everything you need to settle the argument</h2>
-      <p class="lead">From live ELO tracking to all-time records — the Insomniacs history book, automated.</p>
+      <span class="eyebrow">// what it does</span>
+      <h2>One bot for the whole group</h2>
+      <p class="lead">Built for a group of friends who play together, watch films together and never let anyone forget a birthday.</p>
+    </div>
+
+    <div class="pillars">
+      <a class="pillar pillar-game" href="/commands/stats">
+        <div class="pillar-icon">🎮</div>
+        <h3>Game Night</h3>
+        <p>Link your FACEIT account once and settle every argument — stats, form, leaderboards, records and who you actually play best with.</p>
+        <ul class="pillar-cmds">
+          <li><code>/ic stats</code></li>
+          <li><code>/ic last</code></li>
+          <li><code>/ic leaderboard</code></li>
+          <li><code>/ic chemistry</code></li>
+        </ul>
+        <span class="card-arrow">All game commands →</span>
+      </a>
+
+      <a class="pillar pillar-movie" href="/commands/movies">
+        <div class="pillar-icon">🎬</div>
+        <h3>Movie Night</h3>
+        <p>A shared watchlist that looks every film up for you — posters, plot, IMDb and Metacritic scores, trailers — plus a pinned list that keeps itself up to date.</p>
+        <ul class="pillar-cmds">
+          <li><code>/ic movie info</code></li>
+          <li><code>/ic movie add</code></li>
+          <li><code>/ic movie list</code></li>
+          <li><code>/ic movie random</code></li>
+        </ul>
+        <span class="card-arrow">All movie commands →</span>
+      </a>
+
+      <a class="pillar pillar-group" href="/commands/utilities">
+        <div class="pillar-icon">🎉</div>
+        <h3>The Group</h3>
+        <p>Birthday reminders a week ahead and on the day, quick polls with emoji voting, and a few handy extras.</p>
+        <ul class="pillar-cmds">
+          <li><code>/ic birthday</code></li>
+          <li><code>/ic poll</code></li>
+          <li><code>/ic info</code></li>
+        </ul>
+        <span class="card-arrow">All group commands →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Game night ──────────────────────────────────────── -->
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-header">
+      <span class="eyebrow">// 🎮 game night</span>
+      <h2>Settle the argument</h2>
+      <p class="lead">Everything comes live from FACEIT, whenever you ask — nothing is posted unless someone runs a command.</p>
     </div>
 
     <div class="features-grid">
-
-      <a class="feature-card" href="/commands/account">
-        <div class="feature-icon">🔗</div>
-        <h3>FACEIT Account Linking</h3>
-        <p>Link your Discord account to your FACEIT nickname once with <code>/ic link</code>. All match data is pulled live from FACEIT.</p>
-        <span class="card-arrow">View /link →</span>
-      </a>
-
-      <a class="feature-card" href="/commands#/stats">
+      <a class="feature-card" href="/commands/stats#/stats">
         <div class="feature-icon">📊</div>
-        <h3>Rich Player Statistics</h3>
-        <p>K/D, ADR, headshot %, win rate, ELO history, streaks, recent form — over any time period you choose.</p>
-        <span class="card-arrow">View /stats →</span>
+        <h3>Stats &amp; form</h3>
+        <p>ELO, level, K/D, headshot %, win rate and streaks — lifetime or just the last week, month or three months. <code>/ic form</code> shows how you've been playing lately.</p>
+        <span class="card-arrow">/ic stats →</span>
       </a>
 
-      <a class="feature-card" href="/commands#/leaderboard">
+      <a class="feature-card" href="/commands/stats#/last">
+        <div class="feature-icon">🕹️</div>
+        <h3>Last match &amp; tonight's session</h3>
+        <p>Full scoreline for your last game with ELO change and a FACEIT link, a table of recent matches, or a summary of tonight's session.</p>
+        <span class="card-arrow">/ic last · /ic recent · /ic session →</span>
+      </a>
+
+      <a class="feature-card" href="/commands/group#/leaderboard">
         <div class="feature-icon">🏆</div>
-        <h3>Server Leaderboards</h3>
-        <p>Who has the highest ELO? Best K/D? Most 30-bombs? The Insomniacs leaderboard covers the serious stats and the fun ones.</p>
-        <span class="card-arrow">View /leaderboard →</span>
+        <h3>Leaderboards &amp; records</h3>
+        <p>Rank everyone by ELO, K/D, win rate, headshots, matches or best streak, and see who holds each all-time Insomniacs record.</p>
+        <span class="card-arrow">/ic leaderboard · /ic records →</span>
       </a>
 
-      <a class="feature-card" href="/commands#/recent">
-        <div class="feature-icon">📅</div>
-        <h3>Match History</h3>
-        <p>Browse recent games with map, score, kills, deaths, ADR, and ELO change for each match.</p>
-        <span class="card-arrow">View /recent →</span>
-      </a>
-
-      <a class="feature-card" href="/commands#/records">
-        <div class="feature-icon">📖</div>
-        <h3>Insomniacs Record Book</h3>
-        <p>All-time records for kills, ADR, streaks, biggest ELO sessions, and more — updated silently, never announced.</p>
-        <span class="card-arrow">View /records →</span>
-      </a>
-
-      <a class="feature-card" href="/commands#/chemistry">
+      <a class="feature-card" href="/commands/group#/chemistry">
         <div class="feature-icon">🤝</div>
-        <h3>Teammate Chemistry</h3>
-        <p>Which duo has the best win rate together? Who is your best teammate? Find out who you actually perform with.</p>
-        <span class="card-arrow">View /chemistry →</span>
+        <h3>Chemistry &amp; head-to-heads</h3>
+        <p>Your win rate with every teammate, your best and worst duo, and side-by-side comparisons to end the debate.</p>
+        <span class="card-arrow">/ic chemistry · /ic compare →</span>
       </a>
 
-      <a class="feature-card" href="/commands#/achievements">
+      <a class="feature-card" href="/commands/maps">
+        <div class="feature-icon">🗺️</div>
+        <h3>Maps</h3>
+        <p>Your win rate and K/D on every map, or a deep dive into one — find your comfort pick and the one to ban.</p>
+        <span class="card-arrow">/ic maps · /ic mapstats →</span>
+      </a>
+
+      <a class="feature-card" href="/commands/achievements">
         <div class="feature-icon">⭐</div>
         <h3>Achievements</h3>
-        <p>Thirty Bomb, The Hard Carry, Tilt Queue, Go To Bed — milestones are tracked silently and shown when you ask.</p>
-        <span class="card-arrow">View /achievements →</span>
+        <p>Thirty Bomb, The Hard Carry, Tilt Queue, Go To Bed and more — worked out from your match history when you ask.</p>
+        <span class="card-arrow">/ic achievements →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Movie night ─────────────────────────────────────── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-header">
+      <span class="eyebrow">// 🎬 movie night</span>
+      <h2>Never ask "what should we watch?" again</h2>
+      <p class="lead">Every film is looked up in a movie database, so the list is full of proper titles, posters and ratings — not typos.</p>
+    </div>
+
+    <div class="features-grid features-grid-2">
+      <a class="feature-card" href="/commands/movies#/movie%20info">
+        <div class="feature-icon">🔎</div>
+        <h3>Look anything up</h3>
+        <p>Plot, cast, runtime, IMDb and Metacritic scores, links and the trailer playing right in Discord — then add it with one click.</p>
+        <span class="card-arrow">/ic movie info →</span>
       </a>
 
-      <a class="feature-card" href="/commands#/birthday">
-        <div class="feature-icon">🎂</div>
-        <h3>Birthdays</h3>
-        <p>Save your birthday and the bot gives everyone a heads-up a week before, then wishes you happy birthday on the day.</p>
-        <span class="card-arrow">View /birthday →</span>
+      <a class="feature-card" href="/commands/movies#/movie%20addmany">
+        <div class="feature-icon">➕</div>
+        <h3>Add one, or a whole list</h3>
+        <p>Suggestions as you type, or paste several separated by commas and step through them — add, add as already watched, or skip.</p>
+        <span class="card-arrow">/ic movie add · /ic movie addmany →</span>
       </a>
 
-      <a class="feature-card" href="/commands#/movie%20list">
-        <div class="feature-icon">🎬</div>
-        <h3>Movie Night</h3>
-        <p>A shared watchlist — look films up with plot, ratings and trailers, add them in a click, and keep a pinned list that updates itself.</p>
-        <span class="card-arrow">View /movie →</span>
+      <a class="feature-card" href="/commands/movies#/movie%20board">
+        <div class="feature-icon">📌</div>
+        <h3>A pinned list that updates itself</h3>
+        <p>One pinned message with the whole watchlist and recently watched films, edited automatically whenever anything changes.</p>
+        <span class="card-arrow">/ic movie board →</span>
       </a>
 
+      <a class="feature-card" href="/commands/movies#/movie%20random">
+        <div class="feature-icon">🎲</div>
+        <h3>Can't decide? Roll for it</h3>
+        <p>A random pick from the watchlist with poster and ratings. Not feeling it? Reroll. Watched it? Tick it off.</p>
+        <span class="card-arrow">/ic movie random →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Get started ─────────────────────────────────────── -->
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-header">
+      <span class="eyebrow">// get started</span>
+      <h2>Up and running in a minute</h2>
+    </div>
+
+    <div class="start-steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Add the bot</h3>
+          <p>Use the <strong>Add to Server</strong> button above and pick your server.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Type <code>/ic</code></h3>
+          <p>Every command lives under <code>/ic</code> — Discord shows them all as you type.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Link FACEIT for stats</h3>
+          <p>Run <code>/ic link</code> once to unlock the game stats. Movies, birthdays and polls work straight away.</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -127,8 +238,9 @@
     <a href="https://github.com/Easton99/Insomniacs-bot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
   </div>
   <p>Built for the Insomniacs Discord server.</p>
+  <p class="footer-note">Movie data from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a> and <a href="https://www.omdbapi.com/" target="_blank" rel="noopener">OMDb</a>. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 </footer>
 
-<script src="js/main.js?v=202611250020"></script>
+<script src="/js/main.js?v=202611250026"></script>
 </body>
 </html>

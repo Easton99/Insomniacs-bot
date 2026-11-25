@@ -715,3 +715,71 @@ footer a:hover { color: var(--orange); opacity: 1; text-decoration: none; }
 }
 .cmd-share:hover { border-color: var(--orange); }
 .cmd-share:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+/* ══════════════════════════════════════════════════════
+   Homepage (index.html)
+   ══════════════════════════════════════════════════════ */
+.hero-sub code { font-size: 0.85em; }
+.hero-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.hero-pill:hover { border-color: var(--orange); text-decoration: none; opacity: 1; transform: translateY(-1px); }
+
+.section-alt { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.section-alt a.feature-card { background: var(--bg); }
+
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+a.pillar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 30px 28px 26px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: inherit;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+a.pillar::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--pillar-accent, var(--orange));
+}
+a.pillar:hover { border-color: var(--pillar-accent, var(--orange)); transform: translateY(-2px); text-decoration: none; opacity: 1; }
+.pillar-game  { --pillar-accent: var(--orange); }
+.pillar-movie { --pillar-accent: var(--purple); }
+.pillar-group { --pillar-accent: var(--green); }
+.pillar-icon { font-size: 36px; }
+.pillar h3 { font-size: 22px; font-weight: 700; color: var(--text); }
+.pillar p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+.pillar-cmds { list-style: none; padding: 0; margin: 2px 0 0; display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-content: flex-start; }
+.pillar-cmds li { margin: 0; }
+.pillar-cmds code { font-size: 12px; }
+.pillar .card-arrow { font-family: 'Space Mono', monospace; font-size: 13px; color: var(--pillar-accent, var(--orange)); }
+
+.start-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+
+@media (max-width: 900px) {
+  .pillars, .start-steps { grid-template-columns: 1fr; }
+}
+
+.features-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 768px) { .features-grid-2 { grid-template-columns: 1fr; } }
