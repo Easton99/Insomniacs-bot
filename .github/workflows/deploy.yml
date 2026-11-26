@@ -1,17 +1,47 @@
+# Push to main → typecheck + tests → deploy to the VPS.
+# The deploy key is locked (authorized_keys forced command) to /srv/compose/insomniacs-bot/ci-deploy.sh
+# (scripts/vps-deploy.sh): reset to main, rebuild, prisma db push, restart, re-register commands.
+# Previously this key was a full shell for a sudo user; now it can only run that one script.
+# (Lint isn't a gate yet: there are a few older lint errors to clean up first.)
 name: Deploy
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Deploy to VPS
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Deploy over SSH
+        env:
+          KEY: ${{ secrets.VPS_DEPLOY_KEY }}
+          HOST: ${{ secrets.VPS_HOST }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          echo "51.195.138.202 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMXjoVnYCXDafdQz3Pa0RhYfg/2RlRKc7yOw/0z1kc5v" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key claude@51.195.138.202 "bash /srv/compose/insomniacs-bot/deploy.sh && cd /srv/compose/insomniacs-bot && docker compose run --rm -e DISCORD_GUILD_ID= bot node dist/scripts/register-commands.js && docker compose run --rm bot node dist/scripts/clear-guild-commands.js"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The server ignores the command sent and runs ci-deploy.sh (forced command).
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes "claude@$HOST" deploy

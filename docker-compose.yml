@@ -7,6 +7,10 @@ services:
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+    # ~100 MB normally; cap so a leak can't starve the rest of the VPS
+    mem_limit: 512m
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: json-file
       options:

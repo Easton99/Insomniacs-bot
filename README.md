@@ -4,7 +4,7 @@ A private Discord bot for the **Insomniacs** Discord server, focused on **Counte
 
 > Commands only reply when someone runs them. The one exception is birthday messages, which are posted only in a channel an admin has chosen with `/ic birthday`.
 
-**Website:** [easton99.github.io/Insomniacs-bot](https://easton99.github.io/Insomniacs-bot)
+**Website:** [hipphamster.online](https://www.hipphamster.online)
 
 ---
 
