@@ -8,7 +8,9 @@ import {
   getPlayerHistory,
   getPlayerLifetimeStats,
 } from '../services/faceit';
-import { processMatchStats } from '../utils/match-utils';
+import { fetchMatchesWithStats, processMatchStats } from '../utils/match-utils';
+import { formatPeak } from '../utils/peak-elo';
+import { updatePeakElo } from '../services/peak-elo';
 import logger from '../utils/logger';
 
 const PERIODS: Record<string, { label: string; days: number }> = {
@@ -53,13 +55,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   if (period) {
-    await executePeriod(interaction, linked.faceitId, period);
+    await executePeriod(interaction, linked.faceitId, period, linked.discordId);
   } else {
-    await executeLifetime(interaction, linked.faceitId);
+    await executeLifetime(interaction, linked.faceitId, linked.discordId);
   }
 }
 
-async function executeLifetime(interaction: ChatInputCommandInteraction, faceitId: string): Promise<void> {
+async function executeLifetime(interaction: ChatInputCommandInteraction, faceitId: string, discordId: string): Promise<void> {
   let player, stats;
   try {
     [player, stats] = await Promise.all([getPlayerById(faceitId), getPlayerLifetimeStats(faceitId)]);
@@ -86,6 +88,20 @@ async function executeLifetime(interaction: ChatInputCommandInteraction, faceitI
   const currentStreak = parseInt(str('Current Win Streak'), 10);
   const streakDisplay = currentStreak > 0 ? `W${currentStreak}` : '—';
 
+  // Peak ELO: rebuilt from the last 20 matches' ELO changes, combined with the best stored peak.
+  // Optional — if FACEIT is slow or a call fails we still show the stats.
+  let peakText: string | null = null;
+  if (cs2) {
+    try {
+      const recent = await fetchMatchesWithStats(faceitId, 20);
+      const peak = await updatePeakElo(discordId, cs2.faceit_elo, recent);
+      peakText = formatPeak(peak, cs2.faceit_elo);
+    } catch (err) {
+      if (err instanceof FaceitRateLimitError) logger.warn('Rate limited while computing peak ELO; skipping');
+      else logger.warn({ err }, 'Could not compute peak ELO');
+    }
+  }
+
   const embed = new EmbedBuilder()
     .setColor(0xff6b35)
     .setAuthor({
@@ -98,6 +114,7 @@ async function executeLifetime(interaction: ChatInputCommandInteraction, faceitI
       { name: 'ELO',        value: cs2 ? cs2.faceit_elo.toString() : '?', inline: true },
       { name: 'Level',      value: cs2 ? cs2.skill_level.toString() : '?', inline: true },
       { name: 'Region',     value: cs2?.region ?? '?',                     inline: true },
+      ...(peakText ? [{ name: 'Peak ELO', value: peakText, inline: true }] : []),
       { name: 'Matches',    value: str('Matches'),                          inline: true },
       { name: 'Win Rate',   value: `${str('Win Rate %')}%`,                inline: true },
       { name: 'Wins',       value: str('Wins'),                             inline: true },
@@ -118,6 +135,7 @@ async function executePeriod(
   interaction: ChatInputCommandInteraction,
   faceitId: string,
   periodKey: string,
+  discordId: string,
 ): Promise<void> {
   const { label, days } = PERIODS[periodKey]!;
   const fromTs = Math.floor(Date.now() / 1000) - days * 86400;
@@ -168,6 +186,8 @@ async function executePeriod(
   const totalElo = eloChanges.length > 0 ? eloChanges.reduce((s, e) => s + e, 0) : null;
 
   const cs2 = player.games?.cs2;
+  // These matches are already loaded (newest first), so the peak costs no extra API calls.
+  const peak = cs2 ? await updatePeakElo(discordId, cs2.faceit_elo, matches) : null;
 
   const embed = new EmbedBuilder()
     .setColor(0xff6b35)
@@ -183,6 +203,7 @@ async function executePeriod(
       ...(totalElo !== null
         ? [{ name: 'ELO Change', value: `${totalElo >= 0 ? '+' : ''}${totalElo}`, inline: true }]
         : []),
+      ...(peak && cs2 ? [{ name: 'Peak ELO', value: formatPeak(peak, cs2.faceit_elo), inline: true }] : []),
       { name: 'Matches',   value: String(matches.length),                 inline: true },
       { name: 'Record',    value: `${wins}W  ${losses}L`,                 inline: true },
       { name: 'Win Rate',  value: `${winRate}%`,                          inline: true },

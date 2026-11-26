@@ -12,6 +12,8 @@ APP=/srv/compose/insomniacs-bot
 
 exec 9>/tmp/insomniacs-bot-deploy.lock
 flock -n 9 || { echo "[deploy] another deploy is running"; exit 1; }
+# Record this deploy's result for the dashboard's Health page (success or failure, whenever we exit).
+trap 'rc=$?; command -v hipphamster-record-deploy >/dev/null && hipphamster-record-deploy insomniacs-bot "$( [ $rc -eq 0 ] && echo ok || echo failed )" "$APP"' EXIT
 
 cd "$APP"
 bash deploy.sh

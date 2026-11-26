@@ -87,7 +87,7 @@ window.IC_COMMANDS = [
   {
     name: 'stats', category: 'stats', requires: 'link', visibility: 'everyone', popular: true,
     synopsis: 'View FACEIT CS2 statistics, lifetime or for a recent period.',
-    description: 'Your headline FACEIT numbers. By default it shows lifetime stats — ELO, level, region, matches, win rate, K/D, headshot %, current and best win streak, and your last 5 results. Pick a period to see the same numbers for just the last week, month or three months, including your ELO change over that time.',
+    description: 'Your headline FACEIT numbers. By default it shows lifetime stats — ELO, level, region, matches, win rate, K/D, headshot %, current and best win streak, and your last 5 results — plus your Peak ELO and when you hit it. Pick a period to see the same numbers for just the last week, month or three months, including your ELO change over that time. FACEIT doesn\'t publish ELO history, so Peak ELO is worked out from your recent matches\' ELO changes; the bot remembers the highest it has ever seen, so it becomes your true peak over time.',
     params: [
       USER_PARAM,
       { name: 'period', type: 'Choice', required: false, default: 'Lifetime', values: ['Last 7 days', 'Last 30 days', 'Last 3 months'], desc: 'Only count matches from this period.' },
@@ -97,7 +97,7 @@ window.IC_COMMANDS = [
       { title: 'Someone else\'s stats', cmd: '/ic stats user:@Adam', explain: 'Shows Adam\'s lifetime stats.' },
       { title: 'Just this month', cmd: '/ic stats period:Last 30 days', explain: 'Shows matches, record, win rate, K/D, kills, HS% and ELO change over the last 30 days.' },
     ],
-    output: 'An embed with ELO, level, win rate, K/D, headshot %, streaks and recent form.',
+    output: 'An embed with ELO, Peak ELO, level, win rate, K/D, headshot %, streaks and recent form.',
     related: ['form', 'last', 'compare'],
   },
   {
@@ -324,13 +324,29 @@ window.IC_COMMANDS = [
   {
     name: 'movie random', category: 'movies', requires: 'anyone', visibility: 'everyone',
     synopsis: 'Can\'t decide? Pick a random movie from the watchlist.',
-    description: 'Picks a random film from the to-watch list. Not feeling it? Hit Reroll. Watching it? Hit Watched it to tick it off.',
+    description: 'Picks a random film from the to-watch list. Not feeling it? Hit Reroll. Watching it? Hit Watched it to tick it off. Want to make a night of it? Hit 📅 Schedule movie night, type when, and a Discord event is created for it.',
     params: [],
     examples: [
-      { title: 'Pick for us', cmd: '/ic movie random', explain: 'Shows a random film from the watchlist with Watched it and Reroll buttons.' },
+      { title: 'Pick for us', cmd: '/ic movie random', explain: 'Shows a random film from the watchlist with Watched it, Reroll and Schedule buttons.' },
     ],
-    output: '"🎲 Tonight\'s pick" with the film\'s poster, ratings and links, who added it, and Watched it / Reroll buttons.',
-    related: ['movie list'],
+    output: '"🎲 Tonight\'s pick" with the film\'s poster, ratings and links, who added it, and Watched it / Reroll / 📅 Schedule movie night buttons.',
+    related: ['movie list', 'movie schedule'],
+  },
+  {
+    name: 'movie schedule', category: 'movies', requires: 'anyone', visibility: 'everyone',
+    synopsis: 'Schedule a movie night from the watchlist as a Discord event.',
+    description: 'Pick a film from the watchlist and say when, and the bot creates a server event for it: the film\'s backdrop as the cover image, its plot as the description, and an end time based on the film\'s runtime (plus half an hour). Everyone sees it in the server\'s Events list and can click Interested to get Discord\'s own reminder. Times are UK time and can be written naturally: "fri 8pm", "tomorrow 20:30", "tonight", "28/11 21:00" or "2026-12-05 19:45". Add a voice channel to hold it there; otherwise the event just says "Movie night 🍿". The 📅 Schedule movie night button on a random pick does the same. The bot needs the Manage Events permission; if it hasn\'t got it, it tells you what to change.',
+    params: [
+      { name: 'title', type: 'Text', required: true, values: ['Watchlist films'], desc: 'Start typing and pick a film from the watchlist.' },
+      { name: 'when', type: 'Text', required: true, values: ['fri 8pm', 'tomorrow 20:30', 'tonight', '28/11 21:00', '2026-12-05 19:45'], desc: 'When to watch, in UK time. Bare hours like "9" mean the evening.' },
+      { name: 'voice', type: 'Channel', required: false, values: ['Voice or stage channel'], desc: 'Where you\'ll watch. Leave it out for a general event.' },
+    ],
+    examples: [
+      { title: 'Friday night film', cmd: '/ic movie schedule title:Dune Part Two when:fri 8pm', explain: 'Creates "🎬 Movie night: Dune: Part Two (2024)" for Friday at 20:00 UK.' },
+      { title: 'In a voice channel', cmd: '/ic movie schedule title:Heat when:28/11 21:00 voice:#Cinema', explain: 'Creates the event in the Cinema voice channel.' },
+    ],
+    output: 'A message with the date and time (and a countdown), plus a link to the new event.',
+    related: ['movie random', 'movie list'],
   },
   {
     name: 'movie info', category: 'movies', requires: 'anyone', visibility: 'everyone', popular: true,

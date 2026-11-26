@@ -15,6 +15,9 @@ model DiscordUser {
   faceitNickname String
   linkedAt       DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  // Highest ELO the bot has seen for this player (rebuilt from match history in /ic stats).
+  peakElo        Int?
+  peakEloAt      DateTime?
 }
 
 // User-generated quotes saved via right-click → Save Quote.
@@ -83,6 +86,10 @@ model Movie {
   rtRating         String?
   metascore        String?
   ratingsUpdatedAt DateTime?
+
+  // Movie night: the Discord scheduled event created by /ic movie schedule (latest one)
+  scheduledEventId String?
+  scheduledFor     DateTime?
 
   @@unique([guildId, normalized])
   @@index([guildId, tmdbId])

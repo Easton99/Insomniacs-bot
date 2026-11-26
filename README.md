@@ -18,7 +18,7 @@ All commands live under `/ic`. Type `/ic` in any channel to get started.
 | `/ic link` | Link your Discord account to a FACEIT nickname |
 | `/ic unlink` | Remove your FACEIT account link |
 | `/ic linkstatus` | View a linked account with live ELO and level |
-| `/ic stats` | Lifetime stats — ELO, K/D, headshot %, win rate, streaks |
+| `/ic stats` | Lifetime stats — ELO, Peak ELO, K/D, headshot %, win rate, streaks |
 | `/ic recent` | Last N matches with map, score, kills, deaths, K/D |
 | `/ic form` | Aggregated performance summary over recent matches |
 | `/ic leaderboard` | Server leaderboard with dropdown category switching |
@@ -32,6 +32,7 @@ All commands live under `/ic`. Type `/ic` in any channel to get started.
 | `/ic movie add` / `addmany` / `list` / `watched` / `remove` / `random` / `info` | Shared movie watchlist — films are looked up on TMDB for proper titles, with IMDb + Metacritic ratings; interactive list to tick films off, sort and pick at random |
 | `/ic movie import` | (Admin) One-time import of movie names already posted in a channel, with preview |
 | `/ic movie board` | (Admin) Pinned watchlist message that the bot keeps up to date |
+| `/ic movie schedule` | Schedule a movie night from the watchlist as a Discord event (UK time, e.g. "fri 8pm"); also a 📅 button on `/ic movie random`. Needs the bot's **Manage Events** permission |
 | `/ic birthday` | Save birthdays — the bot posts a reminder a week before and a message on the day (admins can set others' birthdays and the channel) |
 
 ---

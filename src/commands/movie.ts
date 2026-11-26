@@ -10,6 +10,8 @@ import {
   Client,
   Collection,
   EmbedBuilder,
+  GuildScheduledEventEntityType,
+  GuildScheduledEventPrivacyLevel,
   Message,
   ModalBuilder,
   ModalSubmitInteraction,
@@ -52,6 +54,7 @@ import {
   rottenTomatoesUrl,
   searchMovies,
 } from '../services/movie-db';
+import { formatUk, parseWhen, validateWhen } from '../utils/movie-schedule';
 import logger from '../utils/logger';
 
 export const MOVIE_PREFIX = 'mv:';
@@ -173,6 +176,27 @@ export const group = new SlashCommandSubcommandGroupBuilder()
           .setDescription('The channel people have been posting movies in')
           .setRequired(true)
           .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.PublicThread),
+      ),
+  )
+  .addSubcommand((s) =>
+    s
+      .setName('schedule')
+      .setDescription('Schedule a movie night as a Discord event')
+      .addStringOption((o) =>
+        o.setName('title').setDescription('Start typing to search the watchlist').setRequired(true).setAutocomplete(true),
+      )
+      .addStringOption((o) =>
+        o
+          .setName('when')
+          .setDescription('UK time, e.g. "fri 8pm", "tomorrow 20:30", "28/11 21:00"')
+          .setRequired(true)
+          .setMaxLength(40),
+      )
+      .addChannelOption((o) =>
+        o
+          .setName('voice')
+          .setDescription('Voice channel to watch in (optional)')
+          .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice),
       ),
   );
 
@@ -530,7 +554,120 @@ async function renderRandom(guildId: string, excludeId?: number) {
       .setDisabled(total <= 1),
   );
   if (movie.tmdbId) row.addComponents(infoButton(movie.tmdbId));
+  row.addComponents(scheduleButton(movie.id));
   return { content: '', embeds: [movieEmbed(movie, '🎲 Tonight\'s pick')], components: [row], allowedMentions: { parse: [] as [] } };
+}
+
+// ── Movie night (Discord scheduled event) ────────────────
+// Only ever runs because someone used /ic movie schedule or pressed the button, so the reply
+// is a response to them (the bot never posts unprompted).
+
+function scheduleButton(movieId: number): ButtonBuilder {
+  return new ButtonBuilder().setCustomId(`${MOVIE_PREFIX}sched:${movieId}`).setLabel('📅 Schedule movie night').setStyle(ButtonStyle.Primary);
+}
+
+function scheduleModal(movieId: number, title: string): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId(`${MOVIE_PREFIX}schedm:${movieId}`)
+    .setTitle(truncate(`Movie night: ${title}`, 45))
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('when')
+          .setLabel('When? (UK time)')
+          .setPlaceholder('fri 8pm · tomorrow 20:30 · 28/11 21:00')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(40),
+      ),
+    );
+}
+
+const EVENT_PERMISSIONS = PermissionFlagsBits.ManageEvents;
+
+/** Creates the event and replies (editReply) with a link, or a friendly reason it couldn't. */
+async function createMovieNight(
+  interaction: GuildChat | ModalSubmitInteraction,
+  movieId: number,
+  whenText: string,
+  voiceChannelId: string | null,
+): Promise<void> {
+  const guild = interaction.guild;
+  if (!guild) {
+    await interaction.editReply({ embeds: [errorEmbed('Server only', 'Movie nights can only be scheduled inside a server.')] });
+    return;
+  }
+  const movie = await db.movie.findFirst({ where: { id: movieId, guildId: guild.id } });
+  if (!movie) {
+    await interaction.editReply({ embeds: [errorEmbed('Not on the watchlist', 'That film isn\'t on this server\'s watchlist any more.')] });
+    return;
+  }
+
+  const when = parseWhen(whenText);
+  const problem = validateWhen(when);
+  if (problem || !when) {
+    await interaction.editReply({ embeds: [errorEmbed('Pick another time', problem ?? 'Invalid time.')] });
+    return;
+  }
+
+  const me = guild.members.me ?? (await guild.members.fetchMe().catch(() => null));
+  if (!me?.permissions.has(EVENT_PERMISSIONS)) {
+    await interaction.editReply({
+      embeds: [
+        errorEmbed(
+          'I need permission to create events',
+          'Ask a server admin to give my role **Manage Events** (Server Settings → Roles), or re-invite me with the updated link on the bot website. Then try again.',
+        ),
+      ],
+    });
+    return;
+  }
+
+  const details = movie.tmdbId ? await withTimeout(getMovieInfo(movie.tmdbId), 4000, null) : null;
+  const minutes = (details?.runtime ?? 120) + 30; // film + a bit for snacks and arguing about subtitles
+  const end = new Date(when.getTime() + minutes * 60_000);
+  const description = truncate(
+    [details?.overview, `Added to the watchlist by <@${movie.addedById}>. Scheduled by <@${interaction.user.id}>.`].filter(Boolean).join('\n\n'),
+    1000,
+  );
+  const image = backdropUrl(details?.backdropPath) ?? (movie.posterPath ? posterUrl(movie.posterPath) : null);
+
+  try {
+    const event = await guild.scheduledEvents.create({
+      name: truncate(`🎬 Movie night: ${withYear(movie.title, movie.year)}`, 100),
+      scheduledStartTime: when,
+      scheduledEndTime: end,
+      privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
+      ...(voiceChannelId
+        ? { entityType: GuildScheduledEventEntityType.Voice, channel: voiceChannelId }
+        : { entityType: GuildScheduledEventEntityType.External, entityMetadata: { location: 'Movie night 🍿' } }),
+      description,
+      ...(image ? { image } : {}),
+      reason: `Scheduled by ${interaction.user.tag} via /ic movie schedule`,
+    });
+    await db.movie.update({ where: { id: movie.id }, data: { scheduledEventId: event.id, scheduledFor: when } });
+    await interaction.editReply({
+      content: `📅 **Movie night scheduled:** ${escapeMarkdown(withYear(movie.title, movie.year))} · ${formatUk(when)} (UK) · <t:${unix(when)}:R>\nhttps://discord.com/events/${guild.id}/${event.id}`,
+      embeds: [],
+      components: [],
+      allowedMentions: { parse: [] },
+    });
+  } catch (err) {
+    logger.warn({ err }, 'Could not create movie night event');
+    await interaction.editReply({ embeds: [errorEmbed('Couldn\'t create the event', 'Discord refused the event. Check I can see that voice channel and have **Manage Events**, then try again.')] });
+  }
+}
+
+async function handleSchedule(interaction: GuildChat): Promise<void> {
+  await interaction.deferReply();
+  const raw = interaction.options.getString('title', true);
+  const id = Number(raw);
+  const movie = Number.isInteger(id) && id > 0 ? { id } : await findMovie(interaction.guildId, raw, false);
+  if (!movie) {
+    await interaction.editReply({ embeds: [errorEmbed('Not found', 'Pick a film from the watchlist suggestions.')] });
+    return;
+  }
+  await createMovieNight(interaction, movie.id, interaction.options.getString('when', true), interaction.options.getChannel('voice')?.id ?? null);
 }
 
 // ── Add (with "did you mean" picker) ─────────────────────
@@ -1243,12 +1380,20 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }
     case 'board':
       return handleBoard(interaction);
+    case 'schedule':
+      return handleSchedule(interaction);
   }
 }
 
-/** The board's "➕ Add movies" box. */
+/** Modals: the board's "➕ Add movies" box, and "When?" for movie night. */
 export async function handleMovieModal(interaction: ModalSubmitInteraction): Promise<void> {
   if (!interaction.guildId) return;
+  if (interaction.customId.startsWith(`${MOVIE_PREFIX}schedm:`)) {
+    await interaction.deferReply();
+    const movieId = Number(interaction.customId.split(':')[2]);
+    await createMovieNight(interaction, movieId, interaction.fields.getTextInputValue('when'), null);
+    return;
+  }
   await interaction.deferReply({ ephemeral: true });
   await addFromList(interaction, interaction.guildId, interaction.fields.getTextInputValue('title'));
 }
@@ -1618,7 +1763,7 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
   const movies = await db.movie.findMany({
     where: {
       guildId: interaction.guildId,
-      ...(sub === 'watched' ? { watched: false } : {}),
+      ...(sub === 'watched' || sub === 'schedule' ? { watched: false } : {}),
       ...(query ? { normalized: { contains: query } } : {}),
     },
     orderBy: { normalized: 'asc' },
@@ -1754,6 +1899,17 @@ export async function handleMovieComponent(interaction: ButtonInteraction | Stri
       if (!interaction.isButton()) return;
       await interaction.showModal(addMoviesModal());
       return;
+
+    case 'sched': {
+      if (!interaction.isButton()) return;
+      const movie = await db.movie.findFirst({ where: { id: Number(parts[0]), guildId } });
+      if (!movie) {
+        await interaction.reply({ content: 'That film isn\'t on the watchlist any more.', ephemeral: true });
+        return;
+      }
+      await interaction.showModal(scheduleModal(movie.id, movie.title));
+      return;
+    }
 
     case 'bv':
     case 'ba':
